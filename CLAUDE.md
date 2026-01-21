@@ -1,264 +1,272 @@
-# ZenBill Project Context
+# ZenBill 專案開發指南
 
-## 1. Project Overview (專案概觀)
-**Name:** ZenBill
-**Description:** 一個以開發者為導向的自動化記帳系統。
-**Core Value:**
-1. **自動化發票同步:** 串接財政部電子發票 API (手機條碼/載具)。
+## 1. 專案概觀
+
+**專案名稱:** ZenBill
+**專案描述:** 一個以開發者為導向的自動化記帳系統。
+**核心價值:**
+1. **自動化發票同步:** 透過網頁爬蟲自動抓取財政部電子發票平台資料（手機條碼/載具）。
 2. **規則引擎 (Rule Engine):** 使用 Regex 與關鍵字自動清洗商家名稱 (Normalization)。
 3. **資產生命週期:** 模擬信用卡自動扣款 (Auto-pay) 與複式簿記 (Double-Entry)。
-**Stack:** Go (Golang) 1.22+, PostgreSQL 16, Docker, Gin, GORM, Viper, PlantUML.
+**技術棧:** Go (Golang) 1.22+, PostgreSQL 16, Docker, Gin, GORM, Viper, Playwright, PlantUML.
 
-## 2. Key Documentation Map (文件索引)
-Refer to these files for the source of truth:
+## 2. 文件索引（真理之源）
 
-### Product & System Logic (`docs/phase-1/`)
-*此目錄包含核心邏輯與使用者需求 (Traditional Chinese)*
-- **User Stories:** `docs/phase-1/1.user-story.md` (功能需求與驗收標準)
-- **Specs (PRD):** `docs/phase-1/2.spec.md` (詳細規格)
-- **Flow:** `docs/phase-1/3.system-flow.puml` (系統時序圖)
+所有開發決策與需求以下列文件為準：
 
-### Backend Implementation (`backend/phase-1/`)
+### 產品與系統邏輯 (`docs/phase-1/`)
+*此目錄包含核心邏輯與使用者需求*
+- **使用者故事:** `docs/phase-1/1.user-story.md` (功能需求與驗收標準)
+- **產品規格:** `docs/phase-1/2.spec.md` (詳細規格書)
+- **系統流程:** `docs/phase-1/3.system-flow.puml` (系統時序圖)
+
+### 後端技術實作 (`backend/phase-1/`)
 *此目錄包含技術實作細節*
-- **Tech Spec:** `backend/phase-1/1.technical-architecture.md` (架構設計)
-- **DB Schema:** `backend/phase-1/2.database-schema.puml` (ER Diagram)
-- **Code Arch:** `backend/phase-1/3.backend-architecture.puml` (程式分層)
-- **Tasks:** `backend/phase-1/4.todo-list.md` (開發待辦)
-- **Tests:** `backend/phase-1/5.test-cases.md` (測試案例)
+- **技術架構:** `backend/phase-1/1.technical-architecture.md` (架構設計)
+- **資料庫 Schema:** `backend/phase-1/2.database-schema.puml` (ER Diagram)
+- **程式碼架構:** `backend/phase-1/3.backend-architecture.puml` (程式分層)
+- **開發待辦:** `backend/phase-1/4.todo-list.md` (任務清單)
+- **測試案例:** `backend/phase-1/5.test-cases.md` (測試規格)
 
-## 3. Common Commands
+## 3. 常用指令
 
-### Development
-- **Run API Server:** `go run cmd/api/main.go`
-- **Run Worker:** `go run cmd/worker/main.go`
-- **Tidy Modules:** `go mod tidy`
-- **Linting:** `golangci-lint run`
+### 開發指令
+- **啟動 API Server:** `go run cmd/api/main.go` 或 `make run-api`
+- **啟動 Worker:** `go run cmd/worker/main.go` 或 `make run-worker`
+- **整理依賴:** `go mod tidy`
+- **程式碼檢查:** `golangci-lint run` 或 `make lint`
 
-### Infrastructure (Docker)
-- **Start DB:** `docker-compose up -d db pgadmin`
-- **Stop All:** `docker-compose down`
+### 基礎建設 (Docker)
+- **啟動資料庫:** `docker-compose up -d db pgadmin` 或 `make docker-up`
+- **停止所有容器:** `docker-compose down` 或 `make docker-down`
 
-### Testing
-- **Run Unit Tests:** `go test ./internal/usecase/... -v`
-- **Run Integration Tests:** `APP_ENV=test go test ./internal/repository/... -v`
-- **Run All Tests:** `go test ./...`
+### 測試
+- **執行單元測試:** `go test ./internal/usecase/... -v`
+- **執行整合測試:** `APP_ENV=test go test ./internal/repository/... -v`
+- **執行所有測試:** `go test ./...` 或 `make test`
 
-## 4. Coding Guidelines (開發規範)
+## 4. 開發規範
 
-### Go Style
-- **Error Handling:** 必須顯式處理錯誤，商業邏輯層禁止使用 `panic`。
-- **Naming:**
-  - Exported: `PascalCase`
-  - Internal: `camelCase`
-  - Interfaces: 使用行為命名 (e.g., `InvoiceRepository`, `Normalizer`).
-- **Configuration:** 使用 `viper` 讀取環境變數 (`ZENBILL_` prefix).
+### Go 程式碼風格
+- **錯誤處理:** 必須顯式處理錯誤，商業邏輯層禁止使用 `panic`。
+- **命名規則:**
+  - 對外匯出: `PascalCase`
+  - 內部使用: `camelCase`
+  - 介面: 使用行為命名 (例如: `InvoiceRepository`, `Normalizer`)。
+- **設定檔管理:** 使用 `viper` 讀取環境變數（前綴為 `ZENBILL_`）。
 
-### Architecture (Clean Architecture)
-- **`cmd/`**: 程式入口，僅負責依賴注入 (DI)。
-- **`internal/delivery/http`**: 僅負責解析 Request 與回傳 JSON，不包含商業邏輯。
-- **`internal/usecase`**: 核心商業邏輯 (Rule Engine, Ledger Calculation)。
-- **`internal/domain`**: 純淨的 Entities 與 Interface 定義 (禁止 import GORM)。
-- **`internal/repository`**: 資料庫實作層 (GORM)。
+### Clean Architecture 分層
+- **`cmd/`**: 程式入口，僅負責依賴注入 (Dependency Injection)。
+- **`internal/delivery/http`**: HTTP 層，僅負責解析 Request 與回傳 JSON，不包含商業邏輯。
+- **`internal/usecase`**: 核心商業邏輯（規則引擎、帳本計算等）。
+- **`internal/domain`**: 純淨的實體 (Entities) 與介面定義（禁止 import GORM）。
+- **`internal/repository`**: 資料庫實作層（使用 GORM）。
 
-### Database Strategy
-- **Transactions:** 涉及 `transactions` 表寫入與 `accounts` 餘額更新時，務必使用 DB Transaction (ACID)。
-- **Raw Data:** API 回傳的原始明細存入 `JSONB` (e.g., `invoices.raw_details`)。
+### 資料庫策略
+- **交易處理 (Transaction):** 涉及 `transactions` 表寫入與 `accounts` 餘額更新時，務必使用資料庫交易確保 ACID。
+- **原始資料保存:** 爬蟲回傳的原始明細存入 `JSONB` 欄位（例如: `invoices.raw_details`）。
 
-## 5. Naming Conventions
-- **Project:** ZenBill
-- **Go Module:** `github.com/your-username/zenbill`
-- **Database:** `zenbill_db`
-- **Env Prefix:** `ZENBILL_`
+## 5. 命名慣例
+- **專案名稱:** ZenBill
+- **Go Module:** `github.com/yukiota/zenbill`
+- **資料庫名稱:** `zenbill_db`
+- **環境變數前綴:** `ZENBILL_`
 
-## 6. Development Workflow (MANDATORY SOP)
+## 6. 開發流程（強制性標準作業程序）
 
-⚠️ **CRITICAL: This section defines the MANDATORY Standard Operating Procedure for all feature development.**
+⚠️ **重要：本章節定義所有功能開發的強制性標準作業程序（SOP）。**
 
-When the user requests feature development using phrases like:
-- "Start feature [X]"
-- "Implement [X]"
-- "Build [X] functionality"
+當使用者使用以下用語請求功能開發時：
+- "Start feature [X]" / "開始 feature [X]"
+- "Implement [X]" / "實作 [X]"
+- "Build [X] functionality" / "開發 [X] 功能"
 - "開始開發 [X]"
 - "實作 [X] 功能"
 
-You **MUST** follow this **4-Phase Development Cycle**. This is not optional.
+你**必須**遵循以下 **4-Phase 開發循環**。這不是選擇性的。
 
-### 🎯 The 4-Phase Cycle
+### 🎯 4-Phase 開發循環
 
 ```
-Phase 1: Context & Design  → 理解需求與設計
-Phase 2: Implementation    → 高品質實作
-Phase 3: Verification      → 嚴格測試
-Phase 4: Closure           → 文件同步與收尾
+Phase 1: 情境與設計     → 理解需求與設計方案
+Phase 2: 程式實作       → 高品質程式碼撰寫
+Phase 3: 測試驗證       → 嚴格測試確保品質
+Phase 4: 文件與收尾     → 更新文件與進度追蹤
 ```
 
 ---
 
-### 📖 Phase 1: Context & Design (理解與設計)
+### 📖 Phase 1: 情境與設計
 
-**MUST DO:**
-1. **Read Product Specifications**
-   - Use `consult-spec` skill OR
-   - Read `docs/phase-1/1.user-story.md` and `docs/phase-1/2.spec.md`
-   - Find relevant sections for this feature
+**必須執行項目:**
+1. **閱讀產品規格**
+   - 使用 `consult-spec` skill 或
+   - 閱讀 `docs/phase-1/1.user-story.md` 與 `docs/phase-1/2.spec.md`
+   - 找出與此功能相關的章節
 
-2. **Read Technical Design**
-   - Use `schema-inspector` skill OR
-   - Read `backend/phase-1/1.technical-architecture.md` and `backend/phase-1/2.database-schema.puml`
-   - Understand which tables/entities are involved
+2. **閱讀技術設計**
+   - 使用 `schema-inspector` skill 或
+   - 閱讀 `backend/phase-1/1.technical-architecture.md` 與 `backend/phase-1/2.database-schema.puml`
+   - 了解涉及哪些資料表/實體
 
-3. **Create Implementation Plan**
-   - Summarize requirements
-   - List files to be modified/created
-   - Explain implementation strategy
-   - **GET USER CONFIRMATION** before proceeding to Phase 2
+3. **建立實作計畫**
+   - 總結需求
+   - 列出需要修改/建立的檔案
+   - 說明實作策略
+   - **在進入 Phase 2 前務必取得使用者確認**
 
-**Checkpoint:**
-- ✅ Specifications reviewed
-- ✅ Schema/Architecture understood
-- ✅ Plan created and confirmed by user
+**檢查點:**
+- ✅ 已審閱規格文件
+- ✅ 已理解 Schema 與架構
+- ✅ 已建立計畫並經使用者確認
 
-**Tools:**
-- `context-loader` skill (快速載入所有文件)
-- `consult-spec` skill (查詢特定規格)
-- `schema-inspector` skill (查看 DB Schema)
-
----
-
-### 💻 Phase 2: Implementation (程式實作)
-
-**MUST DO:**
-1. **Follow Clean Architecture**
-   - Domain Layer (`internal/domain/`) - Pure entities & interfaces
-   - Repository Layer (`internal/repository/`) - Database operations with GORM
-   - Usecase Layer (`internal/usecase/`) - Business logic
-   - Delivery Layer (`internal/delivery/http/`) - HTTP handlers
-
-2. **Use Code Generation Tools When Appropriate**
-   - New entity? → Use `scaffold-domain` skill
-   - Regex rule? → **MUST** use `regex-tester` skill to validate BEFORE adding to code
-
-3. **Continuous Quality Check**
-   - Run `lint-check` skill after writing each module
-   - Ensure code compiles: `go build ./...`
-
-**Checkpoint:**
-- ✅ Code follows Clean Architecture
-- ✅ Code passes `lint-check`
-- ✅ Code compiles successfully
-
-**Tools:**
-- `scaffold-domain` skill (產生 Domain Layer 模板)
-- `regex-tester` skill (驗證 Regex Pattern - **ZenBill 核心功能**)
-- `lint-check` skill (程式碼品質檢查)
+**工具:**
+- `context-loader` skill（快速載入所有文件）
+- `consult-spec` skill（查詢特定規格）
+- `schema-inspector` skill（查看資料庫 Schema）
 
 ---
 
-### 🧪 Phase 3: Verification (測試驗證)
+### 💻 Phase 2: 程式實作
 
-**MUST DO:**
-1. **Read Test Specifications**
-   - Read `backend/phase-1/5.test-cases.md`
-   - Identify relevant test scenarios
+**必須執行項目:**
+1. **遵循 Clean Architecture**
+   - Domain Layer (`internal/domain/`) - 純淨的實體與介面
+   - Repository Layer (`internal/repository/`) - 使用 GORM 的資料庫操作
+   - Usecase Layer (`internal/usecase/`) - 商業邏輯
+   - Delivery Layer (`internal/delivery/http/`) - HTTP 處理器
 
-2. **Write Tests**
-   - Unit tests (`*_test.go` in usecase/)
-   - Integration tests (`*_test.go` in repository/, if DB involved)
-   - Cover both success and error cases
+2. **適時使用程式碼產生工具**
+   - 新增實體？→ 使用 `scaffold-domain` skill
+   - Regex 規則？→ **必須**使用 `regex-tester` skill 驗證後才能加入程式碼
 
-3. **Execute Tests**
+3. **持續品質檢查**
+   - 每完成一個模組後執行 `lint-check` skill
+   - 確保程式碼可編譯: `go build ./...`
+
+**檢查點:**
+- ✅ 程式碼遵循 Clean Architecture
+- ✅ 程式碼通過 `lint-check`
+- ✅ 程式碼編譯成功
+
+**工具:**
+- `scaffold-domain` skill（產生 Domain Layer 模板）
+- `regex-tester` skill（驗證 Regex Pattern - **ZenBill 核心功能**）
+- `lint-check` skill（程式碼品質檢查）
+
+---
+
+### 🧪 Phase 3: 測試驗證
+
+**必須執行項目:**
+1. **閱讀測試規格**
+   - 閱讀 `backend/phase-1/5.test-cases.md`
+   - 識別相關的測試場景
+
+2. **撰寫測試**
+   - 單元測試（`*_test.go` 位於 usecase/）
+   - 整合測試（`*_test.go` 位於 repository/，如涉及資料庫）
+   - 涵蓋成功與錯誤情境
+
+3. **執行測試**
    ```bash
    go test ./... -v
    ```
 
-4. **Handle Test Failures**
-   - ⚠️ **CRITICAL:** If ANY test fails, you **MUST STOP** and fix the code
-   - **DO NOT** skip failed tests
-   - **DO NOT** mark feature as complete with failing tests
-   - Fix → Re-run → Pass → Continue
+4. **處理測試失敗**
+   - ⚠️ **關鍵：** 如果**任何**測試失敗，你**必須停止**並修復程式碼
+   - **絕不可**跳過失敗的測試
+   - **絕不可**在有測試失敗時標記功能完成
+   - 修復 → 重新執行 → 通過 → 繼續
 
-**Checkpoint:**
-- ✅ Unit tests written
-- ✅ Integration tests written (if applicable)
-- ✅ **ALL TESTS PASS** (non-negotiable)
-- ✅ Test coverage includes main logic branches
+**檢查點:**
+- ✅ 已撰寫單元測試
+- ✅ 已撰寫整合測試（如適用）
+- ✅ **所有測試通過**（不可妥協）
+- ✅ 測試涵蓋主要邏輯分支
 
-**Tools:**
-- `verify-and-close` skill (自動執行完整驗證流程)
-
----
-
-### 📝 Phase 4: Closure (文件與收尾)
-
-**MUST DO:**
-1. **Update Progress**
-   - Use `check-progress` skill OR
-   - Edit `backend/phase-1/4.todo-list.md`
-   - Mark completed task as `[x]`
-
-2. **Sync Documentation** (if applicable)
-   - **Database changes?** → Update `backend/phase-1/2.database-schema.puml`
-   - **API changes?** → Update `docs/phase-1/2.spec.md`
-   - **Architecture changes?** → Update `backend/phase-1/1.technical-architecture.md`
-
-3. **Completion Report**
-   - List what was completed
-   - List files modified
-   - Report test results
-   - Suggest next steps
-
-**Checkpoint:**
-- ✅ TODO list updated
-- ✅ Documentation synced (if changed)
-- ✅ Completion reported to user
-
-**Tools:**
-- `check-progress` skill (檢查並更新進度)
-- `verify-and-close` skill (完整的驗證與收尾)
+**工具:**
+- `verify-and-close` skill（自動執行完整驗證流程）
 
 ---
 
-### 🚀 Recommended Workflow
+### 📝 Phase 4: 文件與收尾
 
-**Use Composite Skills for Maximum Efficiency:**
+**必須執行項目:**
+1. **更新進度** ⚠️ **強制性 - 不可跳過**
+   - **務必**在完成任何開發任務後編輯 `backend/phase-1/4.todo-list.md`
+   - 將已完成的任務標記為 `[x]`
+   - 為主要階段的完成加上完成日期
+   - 記錄實作過程中的關鍵修復或決策
+   - 如完成整個階段，更新專案狀態
+   - 替代方案：使用 `check-progress` skill 驗證當前狀態
+
+2. **同步文件**（如適用）
+   - **資料庫變更？** → 更新 `backend/phase-1/2.database-schema.puml`
+   - **API 變更？** → 更新 `docs/phase-1/2.spec.md`
+   - **架構變更？** → 更新 `backend/phase-1/1.technical-architecture.md`
+   - **新增設定？** → 更新 `.env.example` 與設定文件
+
+3. **完成報告**
+   - 列出已完成的項目
+   - 列出已修改/建立的檔案
+   - 報告測試結果（所有測試必須通過）
+   - 記錄已修復的錯誤或已解決的問題
+   - 根據 TODO list 建議下一步
+
+**檢查點:**
+- ✅ TODO list 已更新（不可妥協）
+- ✅ 文件已同步（如有變更）
+- ✅ 已向使用者報告完成情況
+- ✅ 專案狀態反映當前進度
+
+**工具:**
+- `check-progress` skill（檢查並更新進度）
+- `verify-and-close` skill（完整的驗證與收尾）
+
+---
+
+### 🚀 推薦工作流程
+
+**使用複合型 Skills 達到最高效率:**
 
 ```bash
-# Option 1: Manual step-by-step
-Phase 1: Use `context-loader` + `consult-spec` + `schema-inspector`
-Phase 2: Write code + Use `lint-check`
-Phase 3-4: Use `verify-and-close` (handles both phases automatically)
+# 方案 1: 手動逐步執行
+Phase 1: 使用 `context-loader` + `consult-spec` + `schema-inspector`
+Phase 2: 撰寫程式碼 + 使用 `lint-check`
+Phase 3-4: 使用 `verify-and-close`（自動處理兩個階段）
 
-# Option 2: Guided workflow (RECOMMENDED)
-Use `start-feature` skill → It will guide you through all 4 phases automatically
+# 方案 2: 引導式工作流程（推薦）
+使用 `start-feature` skill → 它會自動引導你完成所有 4 個階段
 ```
 
-**The `start-feature` skill is your workflow orchestrator** - it ensures all phases are executed correctly.
+**`start-feature` skill 是你的工作流程編排器** - 它確保所有階段都正確執行。
 
 ---
 
-### ⛔ Absolute Rules (Non-Negotiable)
+### ⛔ 絕對規則（不可妥協）
 
-1. **DO NOT skip Phase 1** - Always read specifications before coding
-2. **DO NOT skip Phase 3** - All code must have tests
-3. **DO NOT ignore test failures** - Failed tests = feature not complete
-4. **DO NOT forget Phase 4** - Always update TODO and sync docs
-5. **DO NOT use Regex without validation** - Always use `regex-tester` for Rule Engine patterns
+1. **不可跳過 Phase 1** - 撰寫程式碼前務必閱讀規格
+2. **不可跳過 Phase 3** - 所有程式碼必須有測試
+3. **不可忽略測試失敗** - 測試失敗 = 功能未完成
+4. **不可忘記 Phase 4** - 務必更新 TODO 並同步文件
+5. **不可使用未驗證的 Regex** - 規則引擎的 Pattern 務必使用 `regex-tester` 驗證
 
-### ✅ Success Criteria
+### ✅ 成功標準
 
-A feature is considered "complete" ONLY when:
-- ✅ Aligns with specifications (Phase 1)
-- ✅ Passes lint check (Phase 2)
-- ✅ Compiles successfully (Phase 2)
-- ✅ All tests pass (Phase 3)
-- ✅ TODO updated (Phase 4)
-- ✅ Documentation synced (Phase 4)
+功能被視為「完成」**僅當**滿足以下條件:
+- ✅ 符合規格文件（Phase 1）
+- ✅ 通過 lint 檢查（Phase 2）
+- ✅ 編譯成功（Phase 2）
+- ✅ 所有測試通過（Phase 3）
+- ✅ TODO 已更新（Phase 4）
+- ✅ 文件已同步（Phase 4）
 
 ---
 
-## 7. Claude Code Skills (AI-Assisted Development)
+## 7. Claude Code Skills（AI 輔助開發）
 
-ZenBill 配備了 **Role-Based Skills**，讓 Claude 能自動判斷何時使用專業工具來確保開發品質。
+ZenBill 配備了 **角色導向 Skills**，讓 Claude 能自動判斷何時使用專業工具來確保開發品質。
 
 ### Skills 位置
 所有 Skills 位於：`.claude/skills/`
@@ -268,12 +276,12 @@ ZenBill 配備了 **Role-Based Skills**，讓 Claude 能自動判斷何時使用
 ZenBill 的 Skills 採用三層架構：
 
 ```
-Layer 3: Workflow Orchestration (流程編排)
+Layer 3: 工作流程編排
 ├── start-feature       ← 完整 4-Phase 開發流程
 ├── verify-and-close    ← Phase 3-4 自動化
 └── context-loader      ← 快速載入所有文件
 
-Layer 2: Atomic Skills (原子性工具)
+Layer 2: 原子性工具
 ├── consult-spec        ← 查詢規格
 ├── check-progress      ← 檢查進度
 ├── lint-check          ← 程式碼檢查
@@ -287,27 +295,27 @@ Layer 2: Atomic Skills (原子性工具)
 - 當你說「Start feature X」→ 自動使用 `start-feature` 執行完整 4-Phase 流程
 - 當你問「接下來要做什麼？」→ 自動使用 `check-progress`
 - 當你說「幫我寫一個規則抓 7-11」→ 自動使用 `regex-tester` 驗證
-- 當你要建立新 Entity → 自動使用 `schema-inspector` 檢查 Schema
+- 當你要建立新實體 → 自動使用 `schema-inspector` 檢查 Schema
 - 當你完成功能開發 → 自動使用 `verify-and-close` 確保品質
 
 ---
 
-### 🎯 Layer 3: Workflow Orchestration (複合型流程)
+### 🎯 Layer 3: 工作流程編排（複合型流程）
 
 #### `start-feature` - 完整開發流程 ⭐ **推薦使用**
-- **用途：** 執行完整的 4-Phase 開發循環（Context → Implementation → Verification → Closure）
+- **用途：** 執行完整的 4-Phase 開發循環（情境 → 實作 → 驗證 → 收尾）
 - **觸發關鍵字：** "Start feature X", "實作 X 功能", "開始開發 X"
 - **自動呼叫：** `context-loader`, `consult-spec`, `schema-inspector`, `lint-check`, `verify-and-close`
 - **手動執行：** `.claude/skills/start-feature/scripts/prepare.sh "功能名稱"`
 - **重要性：** 這是 ZenBill 開發流程的總指揮，確保不會遺漏任何步驟
 
 #### `verify-and-close` - 驗證與收尾
-- **用途：** 自動執行 Phase 3 (測試) 和 Phase 4 (收尾)
+- **用途：** 自動執行 Phase 3（測試）和 Phase 4（收尾）
 - **觸發時機：** 功能開發完成後
 - **包含流程：**
-  1. Lint check (`golangci-lint`)
-  2. Build check (`go build`)
-  3. Test execution (`go test`)
+  1. Lint 檢查（`golangci-lint`）
+  2. 編譯檢查（`go build`）
+  3. 測試執行（`go test`）
   4. TODO 更新
   5. 文件同步檢查
 - **手動執行：** `.claude/skills/verify-and-close/scripts/verify.sh`
@@ -315,22 +323,22 @@ Layer 2: Atomic Skills (原子性工具)
 
 #### `context-loader` - 快速情境載入
 - **用途：** 一次性載入所有專案文件（規格、架構、Schema、TODO）
-- **觸發時機：** 開始新功能、onboarding、長時間離開專案後
+- **觸發時機：** 開始新功能、初次接觸專案、長時間離開專案後
 - **載入內容：**
-  - Product: User Stories, Specs
-  - Technical: Architecture, Schema, TODO, Test Cases
-  - Project: CLAUDE.md
+  - 產品文件: 使用者故事、規格書
+  - 技術文件: 架構設計、Schema、TODO、測試案例
+  - 專案指南: CLAUDE.md
 - **手動執行：**
   - 完整模式：`.claude/skills/context-loader/scripts/load.sh`
   - 摘要模式：`.claude/skills/context-loader/scripts/load.sh --summary`
 
 ---
 
-### 👔 Layer 2: PM Role (Product Manager)
+### 👔 Layer 2: PM 角色（產品經理）
 
 #### `consult-spec` - 查詢規格書
 - **用途：** 確保開發符合 `docs/phase-1/` 的設計文件
-- **觸發時機：** 開發前確認需求、查詢 User Story、Spec
+- **觸發時機：** 開發前確認需求、查詢使用者故事、規格
 - **手動執行：** `.claude/skills/consult-spec/scripts/search.sh "關鍵字"`
 
 #### `check-progress` - 檢查進度
@@ -338,20 +346,20 @@ Layer 2: Atomic Skills (原子性工具)
 - **觸發時機：** 「我們現在到哪了？」、「接下來要做什麼？」
 - **手動執行：** `.claude/skills/check-progress/scripts/check.sh`
 
-### 🔍 Reviewer Role (Architecture/QA)
+### 🔍 Reviewer 角色（架構/品質保證）
 
 #### `lint-check` - 程式碼品質檢查
 - **用途：** 執行 `golangci-lint` 確保程式碼符合規範
 - **觸發時機：** 提交前、完成功能後、重構後
 - **手動執行：** `.claude/skills/lint-check/scripts/lint.sh`
-- **必備工具：** `golangci-lint` (需先安裝)
+- **必備工具：** `golangci-lint`（需先安裝）
 
 #### `schema-inspector` - 資料庫 Schema 檢查
 - **用途：** 查看 `backend/phase-1/2.database-schema.puml`
-- **觸發時機：** 建立 Entity、實作 Repository、修改欄位
+- **觸發時機：** 建立實體、實作 Repository、修改欄位
 - **手動執行：** `.claude/skills/schema-inspector/scripts/inspect.sh [table_name]`
 
-### 💻 Coder Role (Developer)
+### 💻 Coder 角色（開發者）
 
 #### `regex-tester` - Regex 測試器 ⭐ **核心工具**
 - **用途：** 測試 Rule Engine 的 Regex Pattern 是否正確匹配商家名稱
@@ -359,7 +367,7 @@ Layer 2: Atomic Skills (原子性工具)
 - **觸發時機：** 建立/修改商家正規化規則
 - **手動執行：**
   ```bash
-  go run .claude/skills/regex-tester/scripts/tester.go "^7-11.*" "7-11 Dunhua Store"
+  go run .claude/skills/regex-tester/scripts/tester.go "^7-11.*" "7-11 敦化店"
   ```
 - **範例：**
   ```bash
@@ -368,7 +376,7 @@ Layer 2: Atomic Skills (原子性工具)
   ```
 
 #### `scaffold-domain` - Domain Layer 產生器
-- **用途：** 自動產生 Clean Architecture 的 Entity 與 Repository 模板
+- **用途：** 自動產生 Clean Architecture 的實體與 Repository 模板
 - **觸發時機：** 建立新的業務實體（如 Payment, Subscription）
 - **手動執行：** `.claude/skills/scaffold-domain/scripts/scaffold.sh EntityName`
 - **產生檔案：**
@@ -379,19 +387,19 @@ Layer 2: Atomic Skills (原子性工具)
 
 **情境：實作商家正規化規則**
 
-1. **User:** "我們接下來要做什麼？"
+1. **使用者:** "我們接下來要做什麼？"
    - **Claude:** [自動使用 `check-progress`] "根據 TODO，下一步是實作 Rule Engine..."
 
-2. **User:** "好，先查一下規格書關於 Rule Engine 的設計"
+2. **使用者:** "好，先查一下規格書關於 Rule Engine 的設計"
    - **Claude:** [自動使用 `consult-spec`] "根據 docs/phase-1/2.spec.md:78，Rule Engine 使用 Regex..."
 
-3. **User:** "幫我寫一個規則來抓全家便利商店"
+3. **使用者:** "幫我寫一個規則來抓全家便利商店"
    - **Claude:** [自動使用 `regex-tester` 驗證] "我測試過了，這個 Pattern 可以準確匹配..."
 
-4. **User:** "好，建立 Merchant entity"
+4. **使用者:** "好，建立 Merchant entity"
    - **Claude:** [自動使用 `schema-inspector` 查 Schema → 使用 `scaffold-domain` 產生模板] "已建立檔案..."
 
-5. **User:** "檢查一下程式碼"
+5. **使用者:** "檢查一下程式碼"
    - **Claude:** [自動使用 `lint-check`] "Lint 通過，沒有問題！"
 
 ### 💡 最佳實踐
@@ -399,11 +407,11 @@ Layer 2: Atomic Skills (原子性工具)
 1. **信任自動化：** Claude 會在適當時機自動使用這些工具，你只需專注在業務需求
 2. **關鍵驗證點：**
    - Regex 規則 → **必須**先用 `regex-tester` 驗證
-   - 新增 Entity → **必須**先用 `schema-inspector` 查 Schema
+   - 新增實體 → **必須**先用 `schema-inspector` 查 Schema
    - 提交程式碼 → **必須**通過 `lint-check`
 3. **手動執行：** 如果你想手動測試，可以直接執行上述腳本
 
 ### 📚 延伸閱讀
 - 各 Skill 的詳細說明：查看 `.claude/skills/*/SKILL.md`
 - Clean Architecture 規範：`backend/phase-1/1.technical-architecture.md`
-- Coding Guidelines：本文件第 4 節
+- 開發規範：本文件第 4 節
