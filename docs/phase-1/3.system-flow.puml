@@ -1,0 +1,178 @@
+@startuml ZenBill_Universal_CRUD
+
+' --- 外觀設定 ---
+skinparam maxMessageSize 150
+skinparam sequenceMessageAlign center
+skinparam participant {
+    BackgroundColor White
+    BorderColor Black
+}
+skinparam sequence {
+    LifeLineBorderColor Gray
+    BoxBorderColor Gray
+}
+skinparam note {
+    BackgroundColor LightYellow
+    BorderColor Orange
+}
+
+actor "User" as User
+participant "App UI" as App order 10 #LightSkyBlue
+participant "Backend API" as API order 20 #Orange
+participant "Worker" as Worker order 25 #Orange
+database "PostgreSQL" as DB order 30 #Gold
+
+' =========================================================
+' Entity 1: Transactions (記帳 CRUD - 核心是「錢要對」)
+' =========================================================
+== 1. 交易管理 (Transactions) - 需確保餘額一致性 ==
+
+group #FFF0F5 Create (手動記帳)
+    User -> App : 記一筆 (支出 $100)
+    activate App
+    App -> API : POST /transactions
+    activate API
+    
+    group #White DB Transaction (Atomic)
+        API -> DB : 1. INSERT transactions (Type=EXPENSE, Amount=100)
+        API -> DB : 2. UPDATE accounts SET balance = balance - 100
+    end
+    
+    API --> App : 201 Created
+    deactivate API
+    App -> App : 更新餘額顯示
+    deactivate App
+end
+
+group #FFF0F5 Update (修正金額/分類)
+    User -> App : 修改金額 ($100 -> $120)
+    activate App
+    App -> API : PATCH /transactions/{id}
+    activate API
+    
+    API -> DB : 查詢舊金額 (Old=$100)
+    
+    group #White DB Transaction (Atomic)
+        API -> DB : 1. 計算差額 (Diff = 20)
+        API -> DB : 2. UPDATE transactions SET amount = 120
+        API -> DB : 3. UPDATE accounts SET balance = balance - 20
+        note right of API
+            **[關鍵]** 修正交易時
+            必須同步修正資產餘額
+        end note
+    end
+    
+    API --> App : 200 OK
+    deactivate API
+    App -> App : 更新顯示
+    deactivate App
+end
+
+group #FFF0F5 Delete (刪除錯帳)
+    User -> App : 刪除該筆交易
+    activate App
+    App -> API : DELETE /transactions/{id}
+    activate API
+    
+    API -> DB : 查詢舊金額 (Old=$120)
+    
+    group #White DB Transaction (Atomic)
+        API -> DB : 1. DELETE FROM transactions
+        API -> DB : 2. UPDATE accounts SET balance = balance + 120
+        note right of API
+            刪除支出 = 錢回來了
+            (餘額回補)
+        end note
+    end
+    
+    API --> App : 204 No Content
+    deactivate API
+    App -> App : 更新顯示
+    deactivate App
+end
+
+
+' =========================================================
+' Entity 2: Rules (規則 CRUD - 核心是「觸發重算」)
+' =========================================================
+== 2. 規則引擎 (Rules) - 需處理歷史資料清洗 ==
+
+group #Lavender Create/Update (新增或修改規則)
+    User -> App : 設定規則 ("Uber" -> Uber Eats)
+    activate App
+    App -> API : POST/PATCH /rules
+    activate API
+    
+    API -> DB : INSERT/UPDATE merchant_rules
+    
+    ' --- 副作用 Trigger ---
+    API -> Worker : <b>[Async Event]</b>\nTrigger Normalization
+    activate Worker
+    note right of Worker
+        規則變動後，背景
+        重新清洗歷史發票
+    end note
+    
+    Worker -> DB : Re-process Invoices
+    Worker -> DB : Update Transactions (修正分類)
+    deactivate Worker
+    
+    API --> App : 200 OK
+    deactivate API
+    App -> User : 顯示「更新成功，正在背景整理」
+    deactivate App
+end
+
+group #Lavender Delete (刪除規則)
+    User -> App : 刪除規則
+    activate App
+    App -> API : DELETE /rules/{id}
+    activate API
+    
+    API -> DB : DELETE FROM merchant_rules
+    note right of API
+        刪除通常**不**回溯
+        只影響未來的新發票
+    end note
+    
+    API --> App : 204 No Content
+    deactivate API
+    App -> User : 顯示「規則已刪除」
+    deactivate App
+end
+
+
+' =========================================================
+' Entity 3: Assets (資產 CRUD - 基礎建設)
+' =========================================================
+== 3. 資產管理 (Accounts) ==
+
+group #F0F8FF Create (新增帳戶)
+    User -> App : 新增信用卡 (結帳日 27)
+    activate App
+    App -> API : POST /accounts
+    activate API
+    API -> DB : INSERT INTO accounts
+    API --> App : 201 Created
+    deactivate API
+    App -> App : 更新列表
+    deactivate App
+end
+
+group #F0F8FF Update (修改設定)
+    User -> App : 修改結帳日 (27 -> 5)
+    activate App
+    App -> API : PATCH /accounts/{id}
+    activate API
+    API -> DB : UPDATE accounts
+    API --> App : 200 OK
+    deactivate API
+    App -> User : 顯示「設定已更新」
+    note right of App
+        下次自動扣款將
+        採用新的結帳日
+    end note
+    deactivate App
+end
+
+@enduml
