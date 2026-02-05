@@ -71,7 +71,7 @@ go test ./... -cover
 #### Step 1: 更新 TODO 進度
 
 **自動檢查：**
-1. 讀取 `backend/phase-1/4.todo-list.md`
+1. 讀取 `docs/backend/4.todo-list.md`
 2. 找出當前正在處理的任務
 3. 標記為 `[x]` 完成
 
@@ -86,7 +86,7 @@ go test ./... -cover
 **自動檢查項目：**
 
 1. **資料庫變更檢查**
-   - 比對 `internal/domain/*.go` 與 `backend/phase-1/2.database-schema.puml`
+   - 比對 `internal/domain/*.go` 與 `docs/backend/2.database-schema.puml`
    - 如果新增或修改了 Entity → 提示需要更新 Schema 文件
 
 2. **API 變更檢查**
@@ -95,7 +95,7 @@ go test ./... -cover
 
 3. **架構變更檢查**
    - 檢查是否新增了新的 Layer 或模組
-   - 如果有 → 提示需要更新 `backend/phase-1/1.technical-architecture.md`
+   - 如果有 → 提示需要更新 `docs/backend/1.technical-architecture.md`
 
 **輸出範例：**
 ```
@@ -168,7 +168,7 @@ Step 4/4: Coverage Report
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Step 1: TODO Update
-  ✅ Updated: backend/phase-1/4.todo-list.md
+  ✅ Updated: docs/backend/4.todo-list.md
      [x] 實作信用卡自動扣款功能
 
 Step 2: Documentation Sync Check
@@ -191,7 +191,7 @@ Step 3: Completion Report
 📁 Files Modified:
    - internal/usecase/auto_pay_usecase.go (new)
    - internal/usecase/auto_pay_usecase_test.go (new)
-   - backend/phase-1/4.todo-list.md (updated)
+   - docs/backend/4.todo-list.md (updated)
 
 🔜 Next Steps:
    - Ready to commit

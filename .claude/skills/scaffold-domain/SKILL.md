@@ -47,7 +47,7 @@ internal/
 
 ## ZenBill Clean Architecture 規範
 
-根據 `CLAUDE.md` 與 `backend/phase-1/1.technical-architecture.md`：
+根據 `CLAUDE.md` 與 `docs/backend/1.technical-architecture.md`：
 
 ### 📁 目錄職責
 

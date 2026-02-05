@@ -118,7 +118,7 @@ echo ""
 
 # Step 1: TODO Status
 echo "Step 1: TODO Update Status"
-TODO_FILE="backend/phase-1/4.todo-list.md"
+TODO_FILE="docs/backend/4.todo-list.md"
 
 if [ -f "$TODO_FILE" ]; then
     TOTAL=$(grep -c "^- \[" "$TODO_FILE" 2>/dev/null || echo 0)
@@ -142,13 +142,13 @@ echo "Step 2: Documentation Sync Check"
 echo "📋 Please verify if documentation needs update:"
 echo ""
 echo "   Database Schema:"
-echo "   → If you added/modified entities: backend/phase-1/2.database-schema.puml"
+echo "   → If you added/modified entities: docs/backend/2.database-schema.puml"
 echo ""
 echo "   API Specification:"
 echo "   → If you added/modified endpoints: docs/phase-1/2.spec.md"
 echo ""
 echo "   Architecture:"
-echo "   → If you changed architecture: backend/phase-1/1.technical-architecture.md"
+echo "   → If you changed architecture: docs/backend/1.technical-architecture.md"
 echo ""
 
 # Step 3: Completion Report

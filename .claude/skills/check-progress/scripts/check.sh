@@ -1,7 +1,7 @@
 #!/bin/bash
 # Check Progress - 檢查開發進度輔助腳本
 
-TODO_FILE="backend/phase-1/4.todo-list.md"
+TODO_FILE="docs/backend/4.todo-list.md"
 LIMIT="${1:-5}"
 
 if [ ! -f "$TODO_FILE" ]; then

@@ -31,7 +31,7 @@ docs/phase-1/
 
 ### ⚙️ 技術層（Technical）
 ```
-backend/phase-1/
+docs/backend/
 ├── 1.technical-architecture.md  ← 架構設計
 ├── 2.database-schema.puml       ← 資料庫 Schema (ER Diagram)
 ├── 3.backend-architecture.puml  ← 程式分層圖
@@ -104,7 +104,7 @@ Loading all project documentation...
 ⚙️  TECHNICAL LAYER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📖 File: backend/phase-1/1.technical-architecture.md
+📖 File: docs/backend/1.technical-architecture.md
 ────────────────────────────────────────
 
 [完整內容...]
@@ -244,11 +244,11 @@ Claude Code 會自動快取已讀取的文件，所以：
 ```
 ✅ docs/phase-1/1.user-story.md
 ✅ docs/phase-1/2.spec.md
-✅ backend/phase-1/1.technical-architecture.md
-✅ backend/phase-1/2.database-schema.puml
-❌ backend/phase-1/3.backend-architecture.puml (missing)
-✅ backend/phase-1/4.todo-list.md
-✅ backend/phase-1/5.test-cases.md
+✅ docs/backend/1.technical-architecture.md
+✅ docs/backend/2.database-schema.puml
+❌ docs/backend/3.backend-architecture.puml (missing)
+✅ docs/backend/4.todo-list.md
+✅ docs/backend/5.test-cases.md
 ✅ CLAUDE.md
 
 ⚠️ 1 file missing. Some context may be incomplete.
@@ -303,11 +303,11 @@ Claude Code 會自動快取已讀取的文件，所以：
 |------|------|------|
 | User Stories | `docs/phase-1/1.user-story.md` | 功能需求與驗收標準 |
 | Specifications | `docs/phase-1/2.spec.md` | 詳細規格說明 |
-| Technical Architecture | `backend/phase-1/1.technical-architecture.md` | 架構設計 |
-| Database Schema | `backend/phase-1/2.database-schema.puml` | ER Diagram |
-| Backend Architecture | `backend/phase-1/3.backend-architecture.puml` | 分層圖 |
-| TODO List | `backend/phase-1/4.todo-list.md` | 開發待辦 |
-| Test Cases | `backend/phase-1/5.test-cases.md` | 測試案例 |
+| Technical Architecture | `docs/backend/1.technical-architecture.md` | 架構設計 |
+| Database Schema | `docs/backend/2.database-schema.puml` | ER Diagram |
+| Backend Architecture | `docs/backend/3.backend-architecture.puml` | 分層圖 |
+| TODO List | `docs/backend/4.todo-list.md` | 開發待辦 |
+| Test Cases | `docs/backend/5.test-cases.md` | 測試案例 |
 | Project Context | `CLAUDE.md` | Coding Guidelines |
 
 ---

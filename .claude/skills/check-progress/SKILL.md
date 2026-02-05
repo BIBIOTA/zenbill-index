@@ -33,15 +33,15 @@ description: 檢查 ZenBill 當前 Phase 的開發進度，顯示已完成和待
 ### 方法 2: 直接讀取文件
 ```bash
 # 讀取 TODO List
-cat backend/phase-1/4.todo-list.md
+cat docs/backend/4.todo-list.md
 
 # 或使用 grep 過濾
-grep "^- \[ \]" backend/phase-1/4.todo-list.md  # 未完成
-grep "^- \[x\]" backend/phase-1/4.todo-list.md  # 已完成
+grep "^- \[ \]" docs/backend/4.todo-list.md  # 未完成
+grep "^- \[x\]" docs/backend/4.todo-list.md  # 已完成
 ```
 
 ## TODO List 位置
-- **Phase 1**: `backend/phase-1/4.todo-list.md`
+- **Phase 1**: `docs/backend/4.todo-list.md`
 
 ## TODO List 格式
 ```markdown

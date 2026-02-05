@@ -1,2 +1,31 @@
+# Subprojects (separate git repos)
 backend/
 app/
+
+# OS files
+.DS_Store
+.DS_Store?
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Environment and sensitive files
+.env
+.env.local
+.env.*.local
+.envrc
+
+# Application generated files
+browser_state.json
+*.log
+logs/
+*.tmp
+*.bak
+
+# Dependencies
+node_modules/
+vendor/

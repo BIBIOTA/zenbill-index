@@ -3,7 +3,7 @@
 
 QUERY="$1"
 DOCS_DIR="docs/phase-1"
-BACKEND_DIR="backend/phase-1"
+BACKEND_DIR="docs/backend"
 
 if [ -z "$QUERY" ]; then
     echo "Usage: $0 <search_query>"
@@ -21,7 +21,7 @@ grep -rn --color=always -C 3 "$QUERY" "$DOCS_DIR" 2>/dev/null
 
 # 搜尋技術文件
 echo ""
-echo "⚙️  Technical Documents (backend/phase-1/):"
+echo "⚙️  Technical Documents (docs/backend/):"
 grep -rn --color=always -C 3 "$QUERY" "$BACKEND_DIR" 2>/dev/null
 
 if [ $? -ne 0 ]; then

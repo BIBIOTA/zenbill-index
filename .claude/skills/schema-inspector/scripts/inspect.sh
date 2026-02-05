@@ -1,7 +1,7 @@
 #!/bin/bash
 # Schema Inspector - 資料庫 Schema 檢查輔助腳本
 
-SCHEMA_FILE="backend/phase-1/2.database-schema.puml"
+SCHEMA_FILE="docs/backend/2.database-schema.puml"
 QUERY="$1"
 
 if [ ! -f "$SCHEMA_FILE" ]; then

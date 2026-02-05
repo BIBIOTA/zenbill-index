@@ -10,7 +10,181 @@
 3. **資產生命週期:** 模擬信用卡自動扣款 (Auto-pay) 與複式簿記 (Double-Entry)。
 **技術棧:** Go (Golang) 1.22+, PostgreSQL 16, Docker, Gin, GORM, Viper, Playwright, PlantUML.
 
-## 2. 文件索引（真理之源）
+## 2. 專案架構
+
+### 整體結構
+
+ZenBill 採用 **Monorepo + 獨立 Git Submodules** 架構，將文檔與程式碼清楚分離。
+
+```
+zen-bill/                         ← 主 Git Repository (Monorepo)
+├── docs/                         ← 📚 所有文檔集中管理
+│   ├── phase-1/                  ← 產品/業務文檔
+│   ├── backend/                  ← 技術實作文檔
+│   ├── phase-2/                  ← Phase 2 開發文檔
+│   └── installation/             ← 安裝與部署指南
+│
+├── backend/                      ← 🔧 後端程式碼（獨立 Git Repository）
+│   ├── cmd/                      ← 程式入口點
+│   ├── internal/                 ← 內部程式碼（Clean Architecture）
+│   ├── pkg/                      ← 後端共享套件
+│   └── [配置文件]                ← Go module 與專案配置
+│
+├── pkg/                          ← 📦 根層級共享套件
+├── cmd/                          ← 🚀 根層級程式入口
+├── .claude/skills/               ← 🤖 AI 輔助開發工具
+└── CLAUDE.md                     ← 📖 本文件（開發指南）
+```
+
+### 目錄職責說明
+
+#### 📚 `docs/` - 文檔管理中心
+**職責：** 集中管理所有專案文檔，包含產品需求、技術設計、開發進度。
+
+**子目錄：**
+- **`docs/phase-1/`** - 產品/業務文檔
+  - 使用者故事 (User Stories)
+  - 產品規格 (Product Specification)
+  - 系統流程圖 (System Flow)
+  - **面向：** 產品經理、業務分析師、Stakeholders
+
+- **`docs/backend/`** - 技術實作文檔
+  - 技術架構設計 (Technical Architecture)
+  - 資料庫 Schema (Database Schema)
+  - 後端程式架構圖 (Backend Architecture)
+  - 開發待辦清單 (TODO List)
+  - 測試案例規格 (Test Cases)
+  - **面向：** 開發者、架構師、測試工程師
+
+- **`docs/phase-2/`** - Phase 2 開發文檔
+  - Phase 2 特定的實作細節與驗收清單
+
+- **`docs/installation/`** - 安裝與部署指南
+  - 環境建置說明
+  - 部署流程文件
+
+#### 🔧 `backend/` - 後端程式碼（獨立 Git Repository）
+**職責：** 純淨的程式碼目錄，遵循 Clean Architecture，只包含 `.go` 和 `_test.go` 檔案。
+
+**重要：** `backend/` 是獨立的 Git Repository，擁有自己的 `.git/`、`go.mod`、配置文件。
+
+**子目錄（Clean Architecture 分層）：**
+
+1. **`backend/cmd/`** - 程式入口點
+   - `cmd/api/` - API Server 入口
+   - `cmd/worker/` - Worker 背景服務入口
+   - `cmd/migrate/` - 資料庫遷移工具入口
+   - **職責：** 依賴注入 (Dependency Injection)、啟動應用程式
+
+2. **`backend/internal/`** - 內部程式碼（Clean Architecture）
+
+   - **`internal/domain/`** - Domain Layer（領域層）
+     - 純淨的實體 (Entities)
+     - Repository 介面定義
+     - 商業規則定義
+     - **禁止：** import GORM 或任何框架
+
+   - **`internal/usecase/`** - Usecase Layer（應用層）
+     - 商業邏輯實作（規則引擎、帳本計算等）
+     - 編排 Domain 與 Repository
+     - **職責：** 核心業務流程
+
+   - **`internal/repository/`** - Repository Layer（資料層）
+     - 使用 GORM 的資料庫操作
+     - 實作 Domain 定義的 Repository 介面
+     - **職責：** 資料持久化
+
+   - **`internal/delivery/`** - Delivery Layer（表現層）
+     - `delivery/http/` - HTTP 處理器 (Gin handlers)
+     - **職責：** 解析 Request、回傳 JSON，不包含商業邏輯
+
+   - **`internal/config/`** - 配置管理
+     - 使用 Viper 讀取環境變數
+     - 配置結構定義
+
+3. **`backend/pkg/`** - 後端共享套件
+   - `pkg/database/` - 資料庫連線與工具
+   - `pkg/einvoice/` - 電子發票爬蟲（Playwright）
+   - **職責：** 可被多個模組重用的工具函式
+
+4. **`backend/configs/`** - 配置範例
+   - `config.yaml.example` - 配置檔範例
+
+5. **專案配置文件：**
+   - `go.mod`, `go.sum` - Go 依賴管理
+   - `Makefile` - 構建與開發指令
+   - `docker-compose.yml` - Docker 容器編排
+   - `.golangci.yml` - Lint 規則配置
+   - `.gitignore` - Git 忽略規則
+   - `.env.example` - 環境變數範例
+
+#### 📦 `pkg/` - 根層級共享套件
+**職責：** 可被根目錄的多個子專案（backend/、未來的 frontend/）共享的通用套件。
+
+**使用時機：** 當某個套件需要被多個獨立的 Git Repository 共享時。
+
+**目前內容：**
+- `pkg/database/` - 跨專案的資料庫工具
+- `pkg/einvoice/` - 電子發票爬蟲（可能被多個服務使用）
+
+#### 🚀 `cmd/` - 根層級程式入口
+**職責：** 根層級的獨立工具程式或輔助腳本。
+
+**範例：**
+- `cmd/sandbox/` - 沙箱測試工具（OCR 訓練、爬蟲調試）
+- `cmd/acceptance/` - 驗收測試工具
+- `cmd/captcha_collector/` - 驗證碼收集工具
+
+**特性：** 這些是開發過程中的輔助工具，不是主要應用程式。
+
+#### 🤖 `.claude/skills/` - AI 輔助開發工具
+**職責：** Claude Code 的自動化 Skills，提升開發效率。
+
+**架構：** 採用三層架構（詳見第 8 節）
+- Layer 3: 工作流程編排（start-feature, verify-and-close, context-loader）
+- Layer 2: 原子性工具（consult-spec, check-progress, lint-check 等）
+
+**特性：** 自動觸發，Claude 會根據情境判斷何時使用。
+
+### 專案架構原則
+
+1. **關注點分離 (Separation of Concerns)**
+   - 文檔與程式碼分離：`docs/` vs `backend/`
+   - 產品文檔與技術文檔分離：`docs/phase-1/` vs `docs/backend/`
+   - 不同層級的程式碼分離：Clean Architecture
+
+2. **單一職責原則 (Single Responsibility Principle)**
+   - `backend/` 只包含程式碼和測試，不包含文檔
+   - 每個 Layer 有明確的職責界限
+   - 配置文件與程式碼分離
+
+3. **依賴反轉原則 (Dependency Inversion Principle)**
+   - `internal/domain/` 不依賴任何外部框架
+   - `internal/repository/` 實作 Domain 定義的介面
+   - 依賴方向：Delivery → Usecase → Domain ← Repository
+
+4. **開放封閉原則 (Open-Closed Principle)**
+   - 透過介面擴展功能，而非修改現有程式碼
+   - Repository 介面定義在 Domain，實作在 Repository
+
+### 開發時的導航指南
+
+| 目的 | 查看位置 |
+|------|---------|
+| 了解產品需求 | `docs/phase-1/` |
+| 了解技術設計 | `docs/backend/` |
+| 查看開發進度 | `docs/backend/4.todo-list.md` |
+| 實作業務邏輯 | `backend/internal/usecase/` |
+| 定義資料結構 | `backend/internal/domain/` |
+| 實作資料存取 | `backend/internal/repository/` |
+| 實作 API 端點 | `backend/internal/delivery/http/` |
+| 查看共享工具 | `backend/pkg/` 或 `pkg/` |
+| 執行開發工具 | `cmd/` 或 `backend/cmd/` |
+| 使用 AI 輔助 | `.claude/skills/` |
+
+---
+
+## 3. 文件索引（真理之源）
 
 所有開發決策與需求以下列文件為準：
 
@@ -20,15 +194,15 @@
 - **產品規格:** `docs/phase-1/2.spec.md` (詳細規格書)
 - **系統流程:** `docs/phase-1/3.system-flow.puml` (系統時序圖)
 
-### 後端技術實作 (`backend/phase-1/`)
+### 後端技術實作 (`docs/backend/`)
 *此目錄包含技術實作細節*
-- **技術架構:** `backend/phase-1/1.technical-architecture.md` (架構設計)
-- **資料庫 Schema:** `backend/phase-1/2.database-schema.puml` (ER Diagram)
-- **程式碼架構:** `backend/phase-1/3.backend-architecture.puml` (程式分層)
-- **開發待辦:** `backend/phase-1/4.todo-list.md` (任務清單)
-- **測試案例:** `backend/phase-1/5.test-cases.md` (測試規格)
+- **技術架構:** `docs/backend/1.technical-architecture.md` (架構設計)
+- **資料庫 Schema:** `docs/backend/2.database-schema.puml` (ER Diagram)
+- **程式碼架構:** `docs/backend/3.backend-architecture.puml` (程式分層)
+- **開發待辦:** `docs/backend/4.todo-list.md` (任務清單)
+- **測試案例:** `docs/backend/5.test-cases.md` (測試規格)
 
-## 3. 常用指令
+## 4. 常用指令
 
 ### 開發指令
 - **啟動 API Server:** `go run cmd/api/main.go` 或 `make run-api`
@@ -45,7 +219,7 @@
 - **執行整合測試:** `APP_ENV=test go test ./internal/repository/... -v`
 - **執行所有測試:** `go test ./...` 或 `make test`
 
-## 4. 開發規範
+## 5. 開發規範
 
 ### Go 程式碼風格
 - **錯誤處理:** 必須顯式處理錯誤，商業邏輯層禁止使用 `panic`。
@@ -66,13 +240,13 @@
 - **交易處理 (Transaction):** 涉及 `transactions` 表寫入與 `accounts` 餘額更新時，務必使用資料庫交易確保 ACID。
 - **原始資料保存:** 爬蟲回傳的原始明細存入 `JSONB` 欄位（例如: `invoices.raw_details`）。
 
-## 5. 命名慣例
+## 6. 命名慣例
 - **專案名稱:** ZenBill
 - **Go Module:** `github.com/yukiota/zenbill`
 - **資料庫名稱:** `zenbill_db`
 - **環境變數前綴:** `ZENBILL_`
 
-## 6. 開發流程（強制性標準作業程序）
+## 7. 開發流程（強制性標準作業程序）
 
 ⚠️ **重要：本章節定義所有功能開發的強制性標準作業程序（SOP）。**
 
@@ -106,7 +280,7 @@ Phase 4: 文件與收尾     → 更新文件與進度追蹤
 
 2. **閱讀技術設計**
    - 使用 `schema-inspector` skill 或
-   - 閱讀 `backend/phase-1/1.technical-architecture.md` 與 `backend/phase-1/2.database-schema.puml`
+   - 閱讀 `docs/backend/1.technical-architecture.md` 與 `docs/backend/2.database-schema.puml`
    - 了解涉及哪些資料表/實體
 
 3. **建立實作計畫**
@@ -160,7 +334,7 @@ Phase 4: 文件與收尾     → 更新文件與進度追蹤
 
 **必須執行項目:**
 1. **閱讀測試規格**
-   - 閱讀 `backend/phase-1/5.test-cases.md`
+   - 閱讀 `docs/backend/5.test-cases.md`
    - 識別相關的測試場景
 
 2. **撰寫測試**
@@ -194,7 +368,7 @@ Phase 4: 文件與收尾     → 更新文件與進度追蹤
 
 **必須執行項目:**
 1. **更新進度** ⚠️ **強制性 - 不可跳過**
-   - **務必**在完成任何開發任務後編輯 `backend/phase-1/4.todo-list.md`
+   - **務必**在完成任何開發任務後編輯 `docs/backend/4.todo-list.md`
    - 將已完成的任務標記為 `[x]`
    - 為主要階段的完成加上完成日期
    - 記錄實作過程中的關鍵修復或決策
@@ -202,9 +376,9 @@ Phase 4: 文件與收尾     → 更新文件與進度追蹤
    - 替代方案：使用 `check-progress` skill 驗證當前狀態
 
 2. **同步文件**（如適用）
-   - **資料庫變更？** → 更新 `backend/phase-1/2.database-schema.puml`
+   - **資料庫變更？** → 更新 `docs/backend/2.database-schema.puml`
    - **API 變更？** → 更新 `docs/phase-1/2.spec.md`
-   - **架構變更？** → 更新 `backend/phase-1/1.technical-architecture.md`
+   - **架構變更？** → 更新 `docs/backend/1.technical-architecture.md`
    - **新增設定？** → 更新 `.env.example` 與設定文件
 
 3. **完成報告**
@@ -264,7 +438,7 @@ Phase 3-4: 使用 `verify-and-close`（自動處理兩個階段）
 
 ---
 
-## 7. Claude Code Skills（AI 輔助開發）
+## 8. Claude Code Skills（AI 輔助開發）
 
 ZenBill 配備了 **角色導向 Skills**，讓 Claude 能自動判斷何時使用專業工具來確保開發品質。
 
@@ -282,12 +456,13 @@ Layer 3: 工作流程編排
 └── context-loader      ← 快速載入所有文件
 
 Layer 2: 原子性工具
-├── consult-spec        ← 查詢規格
-├── check-progress      ← 檢查進度
-├── lint-check          ← 程式碼檢查
-├── schema-inspector    ← Schema 檢查
-├── regex-tester        ← Regex 驗證
-└── scaffold-domain     ← 程式碼產生
+├── consult-spec            ← 查詢規格
+├── check-progress          ← 檢查進度
+├── lint-check              ← 程式碼檢查
+├── schema-inspector        ← Schema 檢查
+├── regex-tester            ← Regex 驗證
+├── scaffold-domain         ← 程式碼產生
+└── einvoice-scraper-guide  ← Phase 2 爬蟲開發指南
 ```
 
 ### Skills 自動觸發機制
@@ -297,6 +472,7 @@ Layer 2: 原子性工具
 - 當你說「幫我寫一個規則抓 7-11」→ 自動使用 `regex-tester` 驗證
 - 當你要建立新實體 → 自動使用 `schema-inspector` 檢查 Schema
 - 當你完成功能開發 → 自動使用 `verify-and-close` 確保品質
+- 當你開發 Phase 2 發票同步 → 自動參考 `einvoice-scraper-guide` 實作細節
 
 ---
 
@@ -355,7 +531,7 @@ Layer 2: 原子性工具
 - **必備工具：** `golangci-lint`（需先安裝）
 
 #### `schema-inspector` - 資料庫 Schema 檢查
-- **用途：** 查看 `backend/phase-1/2.database-schema.puml`
+- **用途：** 查看 `docs/backend/2.database-schema.puml`
 - **觸發時機：** 建立實體、實作 Repository、修改欄位
 - **手動執行：** `.claude/skills/schema-inspector/scripts/inspect.sh [table_name]`
 
@@ -382,6 +558,34 @@ Layer 2: 原子性工具
 - **產生檔案：**
   - `internal/domain/<entity>.go`
   - `internal/repository/<entity>_repository.go`
+
+#### `einvoice-scraper-guide` - 電子發票爬蟲開發指南 ⭐ **Phase 2 專用**
+- **用途：** 財政部電子發票平台爬蟲完整開發指南，包含 Playwright 實作、UI 選擇器、API 攔截、錯誤處理、除錯技巧
+- **重要性：** Phase 2 發票同步的核心技術文件，包含實戰級程式碼範例
+- **觸發時機：**
+  - 開始 Phase 2 發票同步功能開發
+  - 需要了解登入流程與 API 攔截
+  - 除錯爬蟲問題（Session 過期、Cloudflare 挑戰）
+  - 查詢 UI 元素選擇器
+- **手動查閱：** `.claude/skills/einvoice-scraper-guide/scripts/view.sh [section]`
+- **快速查詢範例：**
+  ```bash
+  # 查看完整指南
+  .claude/skills/einvoice-scraper-guide/scripts/view.sh
+
+  # 查看登入流程
+  .claude/skills/einvoice-scraper-guide/scripts/view.sh login
+
+  # 查看常見問題
+  .claude/skills/einvoice-scraper-guide/scripts/view.sh faq
+  ```
+- **包含內容：**
+  - 完整登入流程與 UI 選擇器（含實際截圖參考）
+  - API 攔截策略與資料結構定義
+  - 錯誤處理與自動重試機制
+  - Playwright 除錯技巧與效能優化
+  - 安全性考量（憑證加密、權限最小化）
+  - 測試策略與常見問題解決方案
 
 ### 🎯 Vibe Coding 工作流程範例
 
@@ -413,5 +617,6 @@ Layer 2: 原子性工具
 
 ### 📚 延伸閱讀
 - 各 Skill 的詳細說明：查看 `.claude/skills/*/SKILL.md`
-- Clean Architecture 規範：`backend/phase-1/1.technical-architecture.md`
-- 開發規範：本文件第 4 節
+- Clean Architecture 規範：`docs/backend/1.technical-architecture.md`
+- 開發規範：本文件第 5 節
+- 專案架構說明：本文件第 2 節

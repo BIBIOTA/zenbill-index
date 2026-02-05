@@ -14,11 +14,11 @@ PRODUCT_FILES=(
 )
 
 TECH_FILES=(
-    "backend/phase-1/1.technical-architecture.md"
-    "backend/phase-1/2.database-schema.puml"
-    "backend/phase-1/3.backend-architecture.puml"
-    "backend/phase-1/4.todo-list.md"
-    "backend/phase-1/5.test-cases.md"
+    "docs/backend/1.technical-architecture.md"
+    "docs/backend/2.database-schema.puml"
+    "docs/backend/3.backend-architecture.puml"
+    "docs/backend/4.todo-list.md"
+    "docs/backend/5.test-cases.md"
 )
 
 PROJECT_FILES=(
@@ -174,7 +174,7 @@ elif [ "$MODE" == "--tech-only" ]; then
 elif [ "$MODE" == "--todo-only" ]; then
     echo "Loading TODO list..."
     echo ""
-    load_file_full "backend/phase-1/4.todo-list.md"
+    load_file_full "docs/backend/4.todo-list.md"
 
 else
     # Full mode
