@@ -11,8 +11,16 @@
 ZenBill 是一個以「自動化」為核心的記帳系統，專為有技術背景的使用者設計：
 
 - **🔄 自動化發票同步** - 透過 Playwright 爬蟲自動抓取財政部電子發票資料
+  - ✅ 手機條碼登入
+  - ✅ CAPTCHA OCR 自動辨識（Tesseract，準確率 >90%）
+  - ✅ API Response 攔截
+  - ✅ 發票明細解析與儲存
 - **🧠 規則引擎** - 使用 Regex/關鍵字自動清洗商家名稱並歸類
+  - ✅ Domain 模型完成
+  - 🚧 Usecase 開發中
 - **💳 資產生命週期** - 模擬信用卡自動扣款與複式簿記
+  - ✅ Account & Transaction entities
+  - 🚧 Auto-pay 邏輯開發中
 
 ## 🚀 Quick Start
 
@@ -50,17 +58,30 @@ go run cmd/api/main.go
 
 ### Tesseract OCR Installation
 
-驗證碼自動辨識需要 Tesseract OCR：
+驗證碼自動辨識需要 Tesseract OCR（包含 leptonica 依賴）：
 
 ```bash
 # macOS
-brew install tesseract
+brew install tesseract leptonica
 
 # Ubuntu/Debian
-sudo apt-get install tesseract-ocr tesseract-ocr-eng
+sudo apt-get install tesseract-ocr tesseract-ocr-eng libleptonica-dev
 
 # Verify installation
 tesseract --version
+
+# Set CGO flags for macOS (add to ~/.zshrc or ~/.bashrc)
+export CGO_CPPFLAGS="-I/opt/homebrew/opt/leptonica/include -I/opt/homebrew/opt/tesseract/include"
+export CGO_LDFLAGS="-L/opt/homebrew/opt/leptonica/lib -L/opt/homebrew/opt/tesseract/lib"
+```
+
+**建置專案（macOS with Homebrew）:**
+
+```bash
+# Build with CGO flags
+CGO_CPPFLAGS="-I/opt/homebrew/opt/leptonica/include -I/opt/homebrew/opt/tesseract/include" \
+CGO_LDFLAGS="-L/opt/homebrew/opt/leptonica/lib -L/opt/homebrew/opt/tesseract/lib" \
+go build ./...
 ```
 
 ## 📁 Project Structure
@@ -71,12 +92,25 @@ zen-bill/
 ├── README.md          # 本文件
 ├── SPEC.md            # 產品與技術規格
 ├── backend/           # Go 後端程式碼
-│   ├── cmd/           # 程式入口點
-│   ├── internal/      # 內部程式碼（Clean Architecture）
-│   ├── pkg/           # 共享套件
-│   └── configs/       # 配置文件
-├── docs/              # 開發文件與計畫
-└── .claude/skills/    # AI 輔助開發工具
+│   ├── cmd/
+│   │   ├── api/              # API Server 入口
+│   │   ├── worker/           # 背景排程 Worker
+│   │   ├── migrate/          # 資料庫遷移工具
+│   │   ├── manual_sync/      # 手動發票同步（開發用）
+│   │   └── captcha_trainer/  # CAPTCHA OCR 訓練工具
+│   ├── internal/
+│   │   ├── domain/           # Domain Layer（純淨實體）
+│   │   ├── usecase/          # Usecase Layer（商業邏輯）
+│   │   ├── repository/       # Repository Layer（資料庫）
+│   │   ├── delivery/http/    # HTTP Layer（Gin handlers）
+│   │   └── config/           # 配置管理
+│   ├── pkg/
+│   │   ├── database/         # 資料庫連線
+│   │   ├── einvoice/         # 發票爬蟲（Playwright + OCR）
+│   │   ├── logger/           # 日誌工具
+│   │   └── metrics/          # 效能指標
+│   └── configs/              # 配置文件範例
+└── .claude/skills/           # AI 輔助開發工具
 ```
 
 ## 🛠️ Development Commands
@@ -88,14 +122,22 @@ docker-compose up -d db pgadmin
 # 停止容器
 docker-compose down
 
-# 執行測試
+# 執行測試（需設定 CGO flags）
+CGO_CPPFLAGS="-I/opt/homebrew/opt/leptonica/include -I/opt/homebrew/opt/tesseract/include" \
+CGO_LDFLAGS="-L/opt/homebrew/opt/leptonica/lib -L/opt/homebrew/opt/tesseract/lib" \
 go test ./...
 
 # 程式碼檢查
 golangci-lint run
 
-# 建置專案
+# 建置專案（macOS）
+CGO_CPPFLAGS="-I/opt/homebrew/opt/leptonica/include -I/opt/homebrew/opt/tesseract/include" \
+CGO_LDFLAGS="-L/opt/homebrew/opt/leptonica/lib -L/opt/homebrew/opt/tesseract/lib" \
 go build ./...
+
+# 手動同步發票（開發用）
+cd backend
+go run cmd/manual_sync/main.go
 ```
 
 ## 📊 Database Access

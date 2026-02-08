@@ -135,8 +135,39 @@ type InvoiceDetailItem struct {
 ### 4.3 CAPTCHA OCR
 
 - **Engine:** Tesseract CLI (v5.5.0)
-- **預處理:** 放大 350%、二值化閾值 100、PSM 8
+- **預處理策略:**
+  - 放大 350% (1050x350 → 3675x1225)
+  - 二值化閾值 100 (threshold)
+  - PSM 8 (Treat as single word)
+  - 白名單字元: `0123456789ABCDEFGHJKLMNPQRSTUVWXYZ`（排除 I, O）
 - **準確率:** 單次 60.87%，配合 3 次重試 > 90%
+- **實作:** `backend/pkg/einvoice/ocr.go`
+- **訓練工具:** `backend/cmd/captcha_trainer/`
+
+### 4.4 API 攔截策略
+
+**採用 Playwright Route 機制:**
+
+```go
+// 攔截發票列表 API
+err = page.Route("**/searchCarrierInvoice", func(route playwright.Route) {
+    response, _ := route.Fetch()
+    body, _ := response.Body()
+    // 解析並儲存發票列表
+})
+
+// 攔截發票明細 API
+err = page.Route("**/getCarrierInvoiceDetail", func(route playwright.Route) {
+    response, _ := route.Fetch()
+    body, _ := response.Body()
+    // 解析並儲存發票明細
+})
+```
+
+**關鍵設計決策:**
+- 使用 `ExpectResponse()` 而非 `OnResponse()`（避免 handler 累積）
+- 避免在 OnResponse 內呼叫 `response.Body()`（可能 deadlock）
+- JWT token 在每次查詢時更新，需透過 invoice number 匹配明細
 
 ---
 
@@ -215,26 +246,61 @@ go tool cover -html=coverage.out
 
 ## 7. 開發階段
 
-### Phase 0: 基礎建設 ✅
-- Repository setup、Docker、Viper config
+### Phase 0: 基礎建設 ✅ (Completed: 2026-01-22)
+- ✅ Repository setup
+- ✅ Docker Compose (PostgreSQL + pgAdmin)
+- ✅ Viper config management
+- ✅ Project structure (Clean Architecture)
 
-### Phase 1: 資料模型 ✅
-- Domain entities、GORM repositories、Migration
+### Phase 1: 資料模型 ✅ (Completed: 2026-01-25)
+- ✅ Domain entities (User, Account, Transaction, Invoice, Merchant, Category)
+- ✅ GORM repositories
+- ✅ Database migration tool
+- ✅ Domain entity unit tests
 
-### Phase 2: 發票爬蟲 ✅
-- Playwright 登入、API 攔截、CAPTCHA OCR、資料庫寫入
+### Phase 2: 發票爬蟲 ✅ (Completed: 2026-02-08)
+- ✅ **Phase 2.1**: Playwright 環境建置與登入流程
+- ✅ **Phase 2.2**: CAPTCHA OCR 實作
+  - Tesseract CLI 整合
+  - 影像預處理（放大、二值化）
+  - 準確率 60.87%（單次），配合重試機制 >90%
+- ✅ **Phase 2.3**: 發票列表爬取
+  - API Response 攔截（`searchCarrierInvoice`）
+  - 多月份查詢支援
+  - Session 管理與錯誤處理
+- ✅ **Phase 2.4**: 發票明細爬取
+  - 明細 API 攔截（`getCarrierInvoiceDetail`）
+  - 品項解析（名稱、數量、單價）
+- ✅ **Phase 2.5**: 發票同步服務整合
+  - `InvoiceSyncService` 實作
+  - 資料庫寫入（Invoice + 原始 JSON）
+  - 重複發票檢查
+- ✅ **Phase 2.6**: 日誌與效能監控
+  - Structured logging (zap)
+  - Sync metrics (duration, invoice count, errors)
+  - Integration tests (mock + real DB)
 
-### Phase 3: 商業邏輯 🚧
-- Rule Engine、Sync Service、Ledger Service
+### Phase 3: 商業邏輯 🚧 (In Progress)
+- ✅ Domain entities & interfaces
+- 🚧 Rule Engine usecase
+- 🚧 Merchant normalization service
+- 🚧 Ledger calculation service
+- ⏳ Transaction creation from invoices
 
-### Phase 4: API Server
-- Gin handlers、CRUD endpoints
+### Phase 4: API Server ⏳
+- 🚧 Gin server setup
+- ⏳ CRUD endpoints (Accounts, Transactions, Invoices)
+- ⏳ Rule management endpoints
 
-### Phase 5: 背景排程
-- Cron jobs、Auto-pay
+### Phase 5: 背景排程 ⏳
+- ⏳ Cron scheduler (robfig/cron)
+- ⏳ Daily invoice sync job
+- ⏳ Auto-pay execution
 
-### Phase 6: 收尾
-- Code quality、Documentation、Deployment
+### Phase 6: 收尾 ⏳
+- ⏳ Code quality (lint, test coverage)
+- ⏳ API documentation
+- ⏳ Deployment guide
 
 ---
 

@@ -14,54 +14,51 @@
 
 ### 整體結構
 
-ZenBill 採用 **Monorepo + 獨立 Git Submodules** 架構，將文檔與程式碼清楚分離。
+ZenBill 採用 **Monorepo** 架構，文檔整合至根目錄。
 
 ```
 zen-bill/                         ← 主 Git Repository (Monorepo)
-├── docs/                         ← 📚 所有文檔集中管理
-│   ├── phase-1/                  ← 產品/業務文檔
-│   ├── backend/                  ← 技術實作文檔
-│   ├── phase-2/                  ← Phase 2 開發文檔
-│   └── installation/             ← 安裝與部署指南
+├── README.md                     ← 📖 專案概覽與快速開始
+├── SPEC.md                       ← 📋 產品與技術規格（整合文檔）
+├── CLAUDE.md                     ← 🤖 本文件（AI 開發指南）
 │
-├── backend/                      ← 🔧 後端程式碼（獨立 Git Repository）
+├── backend/                      ← 🔧 後端程式碼
 │   ├── cmd/                      ← 程式入口點
+│   │   ├── api/                  ← API Server
+│   │   ├── worker/               ← 背景排程
+│   │   ├── migrate/              ← 資料庫遷移
+│   │   ├── manual_sync/          ← 手動同步（開發用）
+│   │   └── captcha_trainer/      ← OCR 訓練工具
 │   ├── internal/                 ← 內部程式碼（Clean Architecture）
-│   ├── pkg/                      ← 後端共享套件
-│   └── [配置文件]                ← Go module 與專案配置
+│   │   ├── domain/               ← Domain Layer
+│   │   ├── usecase/              ← Usecase Layer
+│   │   ├── repository/           ← Repository Layer
+│   │   ├── delivery/http/        ← HTTP Layer
+│   │   └── config/               ← 配置管理
+│   ├── pkg/                      ← 共享套件
+│   │   ├── database/             ← 資料庫連線
+│   │   ├── einvoice/             ← 發票爬蟲（Playwright + OCR）
+│   │   ├── logger/               ← 日誌工具
+│   │   └── metrics/              ← 效能指標
+│   └── configs/                  ← 配置文件範例
 │
-├── pkg/                          ← 📦 根層級共享套件
-├── cmd/                          ← 🚀 根層級程式入口
-├── .claude/skills/               ← 🤖 AI 輔助開發工具
-└── CLAUDE.md                     ← 📖 本文件（開發指南）
+└── .claude/skills/               ← 🤖 AI 輔助開發工具
 ```
 
 ### 目錄職責說明
 
-#### 📚 `docs/` - 文檔管理中心
-**職責：** 集中管理所有專案文檔，包含產品需求、技術設計、開發進度。
+#### 📖 文檔結構（2026-02-08 重組）
 
-**子目錄：**
-- **`docs/phase-1/`** - 產品/業務文檔
-  - 使用者故事 (User Stories)
-  - 產品規格 (Product Specification)
-  - 系統流程圖 (System Flow)
-  - **面向：** 產品經理、業務分析師、Stakeholders
+**核心文檔（根目錄）:**
+- **`README.md`** - 專案概覽、快速開始、安裝指南
+- **`SPEC.md`** - 產品規格、技術架構、測試案例（整合所有規格文件）
+- **`CLAUDE.md`** - 本文件（AI 輔助開發指南）
 
-- **`docs/backend/`** - 技術實作文檔
-  - 技術架構設計 (Technical Architecture)
-  - 資料庫 Schema (Database Schema)
-  - 後端程式架構圖 (Backend Architecture)
-  - 開發待辦清單 (TODO List)
-  - 測試案例規格 (Test Cases)
-  - **面向：** 開發者、架構師、測試工程師
-
-- **`docs/phase-2/`** - Phase 2 開發文檔
-  - Phase 2 特定的實作細節與驗收清單
-
-- **`docs/installation/`** - 安裝與部署指南
-  - 環境建置說明
-  - 部署流程文件
+**歷史文檔（已整合至 SPEC.md）:**
+- ~~`docs/phase-1/`~~ - 產品需求已整合至 SPEC.md §1-2
+- ~~`docs/backend/`~~ - 技術設計已整合至 SPEC.md §3-6
+- ~~`docs/phase-2/`~~ - Phase 2 實作細節已整合至 SPEC.md §4
+- ~~`docs/installation/`~~ - 安裝指南已整合至 README.md
 
 #### 🔧 `backend/` - 後端程式碼（獨立 Git Repository）
 **職責：** 純淨的程式碼目錄，遵循 Clean Architecture，只包含 `.go` 和 `_test.go` 檔案。
@@ -186,38 +183,88 @@ zen-bill/                         ← 主 Git Repository (Monorepo)
 
 ## 3. 文件索引（真理之源）
 
-所有開發決策與需求以下列文件為準：
+所有開發決策與需求以下列文件為準（2026-02-08 重組）：
 
-### 產品與系統邏輯 (`docs/phase-1/`)
-*此目錄包含核心邏輯與使用者需求*
-- **使用者故事:** `docs/phase-1/1.user-story.md` (功能需求與驗收標準)
-- **產品規格:** `docs/phase-1/2.spec.md` (詳細規格書)
-- **系統流程:** `docs/phase-1/3.system-flow.puml` (系統時序圖)
+### 核心文檔
 
-### 後端技術實作 (`docs/backend/`)
-*此目錄包含技術實作細節*
-- **技術架構:** `docs/backend/1.technical-architecture.md` (架構設計)
-- **資料庫 Schema:** `docs/backend/2.database-schema.puml` (ER Diagram)
-- **程式碼架構:** `docs/backend/3.backend-architecture.puml` (程式分層)
-- **開發待辦:** `docs/backend/4.todo-list.md` (任務清單)
-- **測試案例:** `docs/backend/5.test-cases.md` (測試規格)
+| 文件 | 內容 | 用途 |
+|------|------|------|
+| **`README.md`** | 專案概覽、快速開始、環境建置 | 新手入門、環境設定 |
+| **`SPEC.md`** | 產品規格、技術架構、測試案例、開發階段 | 功能開發、架構決策 |
+| **`CLAUDE.md`** | AI 開發指南、Skills 說明、開發流程 | AI 輔助開發 |
+
+### 重要章節索引（SPEC.md）
+
+- **§1-2**: 產品願景與功能需求（原 `docs/phase-1/`）
+- **§3**: 技術架構與 Clean Architecture（原 `docs/backend/1.technical-architecture.md`）
+- **§4**: 發票爬蟲模組（原 `docs/phase-2/`）
+- **§5**: 規則引擎設計
+- **§6**: 測試規格（原 `docs/backend/5.test-cases.md`）
+- **§7**: 開發階段與進度追蹤（原 `docs/backend/4.todo-list.md`）
 
 ## 4. 常用指令
 
-### 開發指令
-- **啟動 API Server:** `go run cmd/api/main.go` 或 `make run-api`
-- **啟動 Worker:** `go run cmd/worker/main.go` 或 `make run-worker`
-- **整理依賴:** `go mod tidy`
-- **程式碼檢查:** `golangci-lint run` 或 `make lint`
+### 環境變數設定（macOS with Homebrew）
+
+建議將以下內容加入 `~/.zshrc` 或 `~/.bashrc`：
+
+```bash
+export CGO_CPPFLAGS="-I/opt/homebrew/opt/leptonica/include -I/opt/homebrew/opt/tesseract/include"
+export CGO_LDFLAGS="-L/opt/homebrew/opt/leptonica/lib -L/opt/homebrew/opt/tesseract/lib"
+```
+
+### 開發指令（需設定 CGO flags）
+
+```bash
+# 進入 backend 目錄
+cd backend
+
+# 啟動 API Server
+go run cmd/api/main.go
+
+# 啟動 Worker
+go run cmd/worker/main.go
+
+# 手動同步發票（開發用）
+go run cmd/manual_sync/main.go
+
+# 整理依賴
+go mod tidy
+
+# 程式碼檢查
+golangci-lint run
+
+# 建置專案
+go build ./...
+```
 
 ### 基礎建設 (Docker)
-- **啟動資料庫:** `docker-compose up -d db pgadmin` 或 `make docker-up`
-- **停止所有容器:** `docker-compose down` 或 `make docker-down`
+```bash
+# 啟動資料庫
+docker-compose up -d db pgadmin
+
+# 停止所有容器
+docker-compose down
+
+# 查看資料庫 logs
+docker-compose logs -f db
+```
 
 ### 測試
-- **執行單元測試:** `go test ./internal/usecase/... -v`
-- **執行整合測試:** `APP_ENV=test go test ./internal/repository/... -v`
-- **執行所有測試:** `go test ./...` 或 `make test`
+```bash
+# 執行單元測試（Domain 層無需 CGO）
+go test ./internal/domain/... -v
+
+# 執行 Usecase 測試（需 CGO - 依賴 einvoice package）
+go test ./internal/usecase/... -v
+
+# 執行整合測試（需資料庫）
+docker-compose up -d db
+APP_ENV=test go test ./internal/repository/... -v
+
+# 執行所有測試
+go test ./... -v
+```
 
 ## 5. 開發規範
 
@@ -240,11 +287,97 @@ zen-bill/                         ← 主 Git Repository (Monorepo)
 - **交易處理 (Transaction):** 涉及 `transactions` 表寫入與 `accounts` 餘額更新時，務必使用資料庫交易確保 ACID。
 - **原始資料保存:** 爬蟲回傳的原始明細存入 `JSONB` 欄位（例如: `invoices.raw_details`）。
 
+### 發票爬蟲開發（Phase 2）
+- **Playwright 實作:** 使用 `playwright-go` 進行瀏覽器自動化
+- **API 攔截:** 使用 `page.Route()` 而非 `page.OnResponse()`（避免 handler 累積與 deadlock）
+- **CAPTCHA OCR:** Tesseract CLI，配合影像預處理（放大、二值化）
+- **錯誤處理:** Session 過期自動重登、Cloudflare 挑戰偵測
+- **日誌與監控:** Structured logging (zap) + Metrics (duration, count, errors)
+- **參考文件:** SPEC.md §4、Memory (`~/.claude/projects/*/memory/MEMORY.md`)
+
 ## 6. 命名慣例
 - **專案名稱:** ZenBill
 - **Go Module:** `github.com/yukiota/zenbill`
 - **資料庫名稱:** `zenbill_db`
 - **環境變數前綴:** `ZENBILL_`
+
+## 6.5 專案當前狀態 (2026-02-08)
+
+### ✅ 已完成
+
+**Phase 0: 基礎建設**
+- Docker Compose (PostgreSQL + pgAdmin)
+- Viper config management
+- Clean Architecture structure
+
+**Phase 1: 資料模型**
+- Domain entities (User, Account, Transaction, Invoice, Merchant, MerchantRule, Category)
+- GORM repositories
+- Database migration tool
+- Domain entity unit tests (15 tests passing)
+
+**Phase 2: 發票爬蟲** ⭐ **剛完成**
+- **Phase 2.1-2.6** 完整實作
+- Playwright 自動化（登入、查詢、API 攔截）
+- CAPTCHA OCR（Tesseract，準確率 >90%）
+- InvoiceSyncService（發票同步服務）
+- 日誌與效能監控（zap + metrics）
+- Integration tests（mock + real DB）
+
+**核心套件:**
+- `pkg/database/` - PostgreSQL 連線
+- `pkg/einvoice/` - 發票爬蟲（Playwright + OCR）
+- `pkg/logger/` - Structured logging
+- `pkg/metrics/` - Sync metrics
+
+**工具程式:**
+- `cmd/api/` - API Server（基礎框架）
+- `cmd/worker/` - 背景排程（基礎框架）
+- `cmd/migrate/` - 資料庫遷移
+- `cmd/manual_sync/` - 手動同步（開發用）
+- `cmd/captcha_trainer/` - OCR 訓練工具
+
+### 🚧 進行中
+
+**Phase 3: 商業邏輯**
+- ⏳ Rule Engine usecase（規則匹配邏輯）
+- ⏳ Merchant normalization service（商家名稱正規化）
+- ⏳ Transaction creation from invoices（從發票建立交易）
+
+### ⏳ 待辦
+
+**Phase 4: API Server**
+- REST API endpoints (CRUD)
+- Request validation
+- Error handling
+
+**Phase 5: 背景排程**
+- Daily invoice sync job
+- Auto-pay execution
+
+**Phase 6: 收尾**
+- Code quality (lint, test coverage)
+- Documentation
+- Deployment guide
+
+### 🔧 已知問題
+
+1. **CGO 依賴問題:**
+   - Tesseract OCR 需要 C 庫（leptonica, tesseract）
+   - 需設定 `CGO_CPPFLAGS` 和 `CGO_LDFLAGS`
+   - 已在 MEMORY.md 記錄解決方案
+
+2. **文檔重組完成:**
+   - 已將 `docs/phase-1/`, `docs/backend/`, `docs/phase-2/` 整合至 `SPEC.md`
+   - 已更新 `README.md` 包含快速開始與安裝指南
+   - `.claude/skills/` 可能需要更新文件路徑（check-progress, consult-spec 等）
+
+### 📊 統計資訊
+
+- **Domain tests:** 15 tests passing
+- **Usecase tests:** InvoiceSyncService integration tests passing
+- **Code structure:** Clean Architecture 完整分層
+- **Documentation:** README + SPEC + CLAUDE 三文檔體系
 
 ## 7. 開發流程（強制性標準作業程序）
 
