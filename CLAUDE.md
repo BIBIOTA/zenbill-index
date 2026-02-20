@@ -226,7 +226,11 @@ go run cmd/api/main.go
 go run cmd/worker/main.go
 
 # 手動同步發票（開發用）
-go run cmd/manual_sync/main.go
+# 方法 1: 本機直接執行（需修改 configs/config.yaml 的 database.host 為 localhost）
+go run cmd/manual_sync/main.go --days 30
+
+# 方法 2: 在 Docker 容器內執行（推薦）
+docker exec -it zenbill_api /app/manual_sync --days 30
 
 # 整理依賴
 go mod tidy
@@ -265,6 +269,41 @@ APP_ENV=test go test ./internal/repository/... -v
 # 執行所有測試
 go test ./... -v
 ```
+
+### 手動同步發票 (manual_sync)
+
+`cmd/manual_sync` 是用於手動同步財政部電子發票平台的工具程式。
+
+**參數：**
+- `--days N` - 同步過去 N 天的發票（預設 7 天）
+
+**方法 1: 在 Docker 容器內執行（推薦）**
+```bash
+# 同步過去 30 天的發票
+docker exec -it zenbill_api /app/manual_sync --days 30
+
+# 同步過去 7 天（預設值）
+docker exec -it zenbill_api /app/manual_sync
+```
+
+**方法 2: 本機直接執行**
+
+需要先修改配置文件：
+```bash
+# 1. 暫時修改 configs/config.yaml
+# 將 database.host 從 "db" 改為 "localhost"
+
+# 2. 執行同步
+go run cmd/manual_sync/main.go --days 30
+
+# 3. 完成後記得恢復 configs/config.yaml
+```
+
+**注意事項：**
+- 需要正確設定 `ZENBILL_EINVOICE_PHONE` 和 `ZENBILL_EINVOICE_VERIFY_CODE` 環境變數
+- 本機執行需要 Tesseract OCR 支援（需設定 CGO flags）
+- 首次執行會自動登入電子發票平台並儲存 Session
+- 重複的發票會自動跳過，不會重複寫入資料庫
 
 ## 5. 開發規範
 
