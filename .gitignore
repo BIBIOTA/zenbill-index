@@ -26,6 +26,9 @@ logs/
 *.tmp
 *.bak
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 # Dependencies
 node_modules/
 vendor/
