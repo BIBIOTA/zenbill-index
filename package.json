@@ -1,6 +1,12 @@
 {
   "name": "zenbill",
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "react": "19.2.0",
+      "react-dom": "19.2.0"
+    }
+  },
   "scripts": {
     "dev:web": "pnpm --filter frontend dev",
     "dev:app": "pnpm --filter app start",

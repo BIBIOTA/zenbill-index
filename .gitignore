@@ -1,7 +1,6 @@
 # Subprojects (separate git repos)
 backend/
 frontend/
-app/
 
 # OS files
 .DS_Store
