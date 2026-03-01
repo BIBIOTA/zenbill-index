@@ -1,0 +1,12 @@
+{
+  "name": "zenbill",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter frontend dev",
+    "dev:app": "pnpm --filter app start",
+    "build:web": "pnpm --filter frontend build",
+    "build:shared": "pnpm --filter @zenbill/shared build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
