@@ -1,2 +1,1 @@
-// @zenbill/shared - shared types, hooks, API client, stores, utils
-export {}
+export * from './types/index.ts'
