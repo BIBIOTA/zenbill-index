@@ -1,0 +1,36 @@
+appId: com.zenbill.app
+---
+- launchApp
+
+# Assumes already logged in (or dev mode auto-login)
+
+# Test tab navigation
+- assertVisible: "總覽"
+
+- tapOn: "帳戶"
+- assertVisible: "帳戶"
+
+- tapOn: "分帳"
+- assertVisible: "分帳"
+
+- tapOn: "發票"
+- assertVisible: "發票"
+
+- tapOn: "更多"
+- assertVisible: "商家管理"
+- assertVisible: "規則引擎"
+- assertVisible: "分類管理"
+- assertVisible: "設定"
+
+# Navigate to sub-screens from More
+- tapOn: "商家管理"
+- assertVisible: "新增商家"
+- back
+
+- tapOn: "規則引擎"
+- assertVisible: "新增規則"
+- back
+
+# Return to dashboard
+- tapOn: "總覽"
+- assertVisible: "總覽"

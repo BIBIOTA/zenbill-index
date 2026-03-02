@@ -1,0 +1,21 @@
+appId: com.zenbill.app
+---
+# For Expo Go dev mode, use openLink instead of launchApp:
+# - openLink: exp://127.0.0.1:8081
+
+- launchApp
+
+- assertVisible: "ZenBill"
+- assertVisible: "Sign in with your email"
+
+- tapOn:
+    id: "login_email_input"
+- inputText: "test@example.com"
+
+- tapOn:
+    id: "login_submit_button"
+
+# In dev mode, should navigate to tabs
+- assertVisible:
+    text: "總覽"
+    optional: true

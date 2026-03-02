@@ -1,0 +1,26 @@
+appId: com.zenbill.app
+---
+- launchApp
+
+# Navigate to create transaction (FAB on dashboard)
+- tapOn:
+    id: "dashboard_fab"
+
+# Should see transaction form
+- assertVisible: "支出"
+- assertVisible: "收入"
+- assertVisible: "轉帳"
+
+# Fill in amount
+- tapOn:
+    id: "txn_amount_input"
+- inputText: "150"
+
+# Fill in note
+- tapOn:
+    id: "txn_note_input"
+- inputText: "測試交易"
+
+# Submit (will likely fail without backend, but validates UI flow)
+- tapOn:
+    id: "txn_submit_button"
