@@ -32,3 +32,6 @@ logs/
 # Dependencies
 node_modules/
 vendor/
+
+# MCP server config (machine-specific paths)
+.mcp.json
