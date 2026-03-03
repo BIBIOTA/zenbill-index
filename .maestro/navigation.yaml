@@ -10,8 +10,8 @@ appId: com.zenbill.app
 - tapOn: "帳戶"
 - assertVisible: "帳戶"
 
-- tapOn: "分帳"
-- assertVisible: "分帳"
+- tapOn: "共同記帳"
+- assertVisible: "共同記帳"
 
 - tapOn: "發票"
 - assertVisible: "發票"
