@@ -300,6 +300,8 @@ export interface CreateSharedExpenseInput {
   owner_amount?: number
   partner_amount?: number
   payment_account_id?: string
+  merchant_id?: string
+  personal_category_id?: string
 }
 
 export interface SharedLedgerSummary {
