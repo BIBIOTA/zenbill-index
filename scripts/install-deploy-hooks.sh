@@ -4,8 +4,8 @@ set -euo pipefail
 # ============================================================
 # Install Deploy Hooks
 # ============================================================
-# Installs pre-push hooks in both backend/ and frontend/ repos
-# so that pushing master triggers auto-deploy.
+# Installs pre-push hooks in monorepo root, backend/, and frontend/
+# so that pushing master triggers auto-deploy + APK build.
 #
 # Usage: ./scripts/install-deploy-hooks.sh
 # ============================================================
@@ -15,6 +15,7 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 HOOK_SCRIPT="${SCRIPT_DIR}/post-push-deploy.sh"
 
 REPOS=(
+    "${PROJECT_DIR}"
     "${PROJECT_DIR}/backend"
     "${PROJECT_DIR}/frontend"
 )
@@ -45,5 +46,5 @@ EOF
 done
 
 echo ""
-echo "Deploy will trigger automatically when you push to master."
+echo "Deploy + APK build will trigger automatically when you push to master."
 echo "Logs: ${PROJECT_DIR}/deploy.log"
