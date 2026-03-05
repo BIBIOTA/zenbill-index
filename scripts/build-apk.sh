@@ -194,7 +194,7 @@ log "Signing config injected."
 cd "${APP_DIR}/android"
 
 log "Running Gradle assembleRelease..."
-if ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
+if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
     log "Gradle build completed."
 else
     log "ERROR: Gradle assembleRelease failed."
