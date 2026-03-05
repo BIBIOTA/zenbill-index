@@ -84,19 +84,25 @@ cd "${PROJECT_DIR}"
 LATEST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)
 
 if [[ -n "${LATEST_TAG}" ]]; then
-    VERSION="${LATEST_TAG#v}"
-    # Parse major.minor.patch for versionCode
-    IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${VERSION}"
-    VERSION_CODE=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
-    log "Version from git tag: ${VERSION} (code: ${VERSION_CODE}, tag: ${LATEST_TAG})"
+    PREV_VERSION="${LATEST_TAG#v}"
+    IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${PREV_VERSION}"
+    # Auto-bump patch version
+    V_PATCH=$(( V_PATCH + 1 ))
+    log "Previous tag: ${LATEST_TAG} → bumping patch to ${V_MAJOR}.${V_MINOR}.${V_PATCH}"
 else
-    # Fallback: read version from app.json and compute versionCode
-    VERSION=$(node -e "console.log(require('./app/app.json').expo.version)")
-    IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${VERSION}"
-    VERSION_CODE=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
-    LATEST_TAG="v${VERSION}"
-    log "No git tag found. Using app.json version: ${VERSION} (code: ${VERSION_CODE})"
+    # Fallback: start from 1.0.0
+    V_MAJOR=1; V_MINOR=0; V_PATCH=0
+    log "No git tag found. Starting at v1.0.0"
 fi
+
+VERSION="${V_MAJOR}.${V_MINOR}.${V_PATCH}"
+VERSION_CODE=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
+NEW_TAG="v${VERSION}"
+
+# Create and push new tag
+git tag "${NEW_TAG}"
+git push github "${NEW_TAG}"
+log "Created and pushed tag: ${NEW_TAG} (version: ${VERSION}, code: ${VERSION_CODE})"
 
 APK_NAME="zenbill-v${VERSION}.apk"
 log "Will produce: ${APK_NAME}"
@@ -222,27 +228,27 @@ log "APK copied to: ${APK_DEST}"
 
 cd "${PROJECT_DIR}"
 
-log "Uploading ${APK_NAME} to GitHub Release ${LATEST_TAG}..."
+log "Uploading ${APK_NAME} to GitHub Release ${NEW_TAG}..."
 
 # Check if release already exists for this tag
-if gh release view "${LATEST_TAG}" --repo "${REPO}" &>/dev/null; then
+if gh release view "${NEW_TAG}" --repo "${REPO}" &>/dev/null; then
     # Release exists: upload (overwrite if APK already attached)
-    log "Release ${LATEST_TAG} exists. Uploading APK with --clobber..."
-    if gh release upload "${LATEST_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
-        log "APK uploaded to existing release ${LATEST_TAG}."
+    log "Release ${NEW_TAG} exists. Uploading APK with --clobber..."
+    if gh release upload "${NEW_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
+        log "APK uploaded to existing release ${NEW_TAG}."
     else
         log "ERROR: Failed to upload APK to release."
         exit 1
     fi
 else
     # Create new release with APK
-    log "Creating new release ${LATEST_TAG}..."
-    if gh release create "${LATEST_TAG}" "${APK_DEST}" \
+    log "Creating new release ${NEW_TAG}..."
+    if gh release create "${NEW_TAG}" "${APK_DEST}" \
         --repo "${REPO}" \
-        --title "ZenBill ${LATEST_TAG}" \
+        --title "ZenBill ${NEW_TAG}" \
         --notes "ZenBill ${VERSION} release" \
         2>&1 | tee -a "${LOG_FILE}"; then
-        log "Release ${LATEST_TAG} created with APK."
+        log "Release ${NEW_TAG} created with APK."
     else
         log "ERROR: Failed to create release."
         exit 1
@@ -255,5 +261,5 @@ log "Cleaned up ${APK_DEST}"
 
 log "=== APK build and upload complete ==="
 log "Version: ${VERSION}"
-log "Tag: ${LATEST_TAG}"
-log "Release: https://github.com/${REPO}/releases/tag/${LATEST_TAG}"
+log "Tag: ${NEW_TAG}"
+log "Release: https://github.com/${REPO}/releases/tag/${NEW_TAG}"
