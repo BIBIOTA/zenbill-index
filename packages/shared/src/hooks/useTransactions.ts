@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type { Transaction, PaginatedResponse, ApiResponse, CreateTransactionInput } from '../types/index.ts'
 
@@ -73,6 +73,29 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export function useInfiniteTransactions(filters: Omit<TransactionFilters, 'page'> = {}) {
+  const api = getApiClient()
+
+  return useInfiniteQuery({
+    queryKey: ['transactions', 'infinite', filters],
+    queryFn: ({ pageParam = 1 }) => {
+      const params = new URLSearchParams()
+      Object.entries({ ...filters, page: pageParam, page_size: filters.page_size ?? 20 }).forEach(
+        ([k, v]) => {
+          if (v !== undefined && v !== '') params.set(k, String(v))
+        }
+      )
+      const qs = params.toString()
+      return api.get<PaginatedResponse<Transaction>>(`/transactions${qs ? `?${qs}` : ''}`)
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const { page, total_pages } = lastPage.pagination
+      return page < total_pages ? page + 1 : undefined
     },
   })
 }
