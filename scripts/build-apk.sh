@@ -20,11 +20,9 @@ set -euo pipefail
 # Usage: ./scripts/build-apk.sh
 # ============================================================
 
-# Source shell profile to ensure ANDROID_HOME and other env vars are set
-# (important when invoked from git hooks where env may be minimal)
-if [[ -f "${HOME}/.zshrc" ]]; then
-    source "${HOME}/.zshrc" 2>/dev/null || true
-fi
+# Ensure ANDROID_HOME is set (git hooks may have minimal env)
+export ANDROID_HOME="${ANDROID_HOME:-${HOME}/Library/Android/sdk}"
+export PATH="${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator:${PATH}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -135,6 +133,11 @@ else
     exit 1
 fi
 
+# Downgrade Gradle wrapper to 8.13 (Gradle 9.x has foojay resolver compatibility issues)
+GRADLE_PROPS="${APP_DIR}/android/gradle/wrapper/gradle-wrapper.properties"
+sed -i '' 's|gradle-9\.[0-9]*\.[0-9]*-bin\.zip|gradle-8.13-bin.zip|' "${GRADLE_PROPS}"
+log "Gradle wrapper set to 8.13"
+
 # ============================================================
 # Phase 5: Inject signing config into build.gradle
 # ============================================================
@@ -148,13 +151,14 @@ fi
 
 log "Injecting signing config into build.gradle..."
 
+GRADLE_FILE_ESC=$(echo "${GRADLE_FILE}" | sed 's/\//\\\//g')
 node -e "
 const fs = require('fs');
-let content = fs.readFileSync('${GRADLE_FILE}', 'utf8');
+const gradlePath = '${GRADLE_FILE}';
+let content = fs.readFileSync(gradlePath, 'utf8');
 
-// Add signingConfigs block before buildTypes (with hasProperty guard)
-const signingConfig = \`
-    signingConfigs {
+// 1. Add release signing config inside existing signingConfigs block
+const releaseConfig = \`
         release {
             if (project.hasProperty('ZENBILL_RELEASE_STORE_FILE')) {
                 storeFile file(project.property('ZENBILL_RELEASE_STORE_FILE'))
@@ -162,23 +166,22 @@ const signingConfig = \`
                 keyAlias project.property('ZENBILL_RELEASE_KEY_ALIAS')
                 keyPassword project.property('ZENBILL_RELEASE_KEY_PASSWORD')
             }
-        }
-    }
-\`;
+        }\`;
 
-// Insert signingConfigs before buildTypes
+// Insert release config after the debug config closing brace inside signingConfigs
 content = content.replace(
-    /(\s+)(buildTypes\s*\{)/,
-    signingConfig + '\n\$1\$2'
+    /(signingConfigs\s*\{[\s\S]*?debug\s*\{[\s\S]*?\})/,
+    '\$1' + releaseConfig
 );
 
-// Add signingConfig reference inside release buildType
+// 2. In buildTypes > release, replace signingConfig signingConfigs.debug with .release
+// Match the release block inside buildTypes (after 'buildTypes {')
 content = content.replace(
-    /(buildTypes\s*\{[\s\S]*?release\s*\{)/,
-    '\$1\n            signingConfig signingConfigs.release'
+    /(buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
+    '\$1signingConfig signingConfigs.release'
 );
 
-fs.writeFileSync('${GRADLE_FILE}', content);
+fs.writeFileSync(gradlePath, content);
 console.log('Signing config injected successfully.');
 "
 
