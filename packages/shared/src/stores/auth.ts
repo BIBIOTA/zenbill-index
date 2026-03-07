@@ -4,8 +4,10 @@ import type { TokenStorage } from '../api/client.ts'
 
 interface AuthState {
   token: string | null
+  refreshToken: string | null
   user: User | null
-  setAuth: (token: string, user: User) => void
+  setAuth: (token: string, refreshToken: string, user: User) => void
+  setTokens: (token: string, refreshToken: string) => void
   setUser: (user: User) => void
   logout: () => void
   isAuthenticated: () => boolean
@@ -16,15 +18,23 @@ export type AuthStore = ReturnType<typeof createAuthStore>
 export function createAuthStore(storage: TokenStorage) {
   return create<AuthState>((set, get) => ({
     token: null,
+    refreshToken: null,
     user: null,
-    setAuth: (token, user) => {
+    setAuth: (token, refreshToken, user) => {
       storage.setToken(token)
-      set({ token, user })
+      storage.setRefreshToken(refreshToken)
+      set({ token, refreshToken, user })
+    },
+    setTokens: (token, refreshToken) => {
+      storage.setToken(token)
+      storage.setRefreshToken(refreshToken)
+      set({ token, refreshToken })
     },
     setUser: (user) => set({ user }),
     logout: () => {
       storage.removeToken()
-      set({ token: null, user: null })
+      storage.removeRefreshToken()
+      set({ token: null, refreshToken: null, user: null })
     },
     isAuthenticated: () => !!get().token,
   }))
