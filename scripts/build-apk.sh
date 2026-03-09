@@ -86,9 +86,13 @@ LATEST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/d
 if [[ -n "${LATEST_TAG}" ]]; then
     PREV_VERSION="${LATEST_TAG#v}"
     IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "${PREV_VERSION}"
-    # Auto-bump patch version
+    # Auto-bump patch version, skip existing tags
     V_PATCH=$(( V_PATCH + 1 ))
-    log "Previous tag: ${LATEST_TAG} → bumping patch to ${V_MAJOR}.${V_MINOR}.${V_PATCH}"
+    while git rev-parse "v${V_MAJOR}.${V_MINOR}.${V_PATCH}" &>/dev/null; do
+        log "Tag v${V_MAJOR}.${V_MINOR}.${V_PATCH} already exists, skipping..."
+        V_PATCH=$(( V_PATCH + 1 ))
+    done
+    log "Previous tag: ${LATEST_TAG} → bumping to ${V_MAJOR}.${V_MINOR}.${V_PATCH}"
 else
     # Fallback: start from 1.0.0
     V_MAJOR=1; V_MINOR=0; V_PATCH=0
