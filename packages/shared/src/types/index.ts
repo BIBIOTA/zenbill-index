@@ -231,6 +231,12 @@ export interface TransactionStats {
   current_month_categories: CategorySummary[]
 }
 
+// === Net Asset Trend ===
+export interface MonthlyNetAsset {
+  month: string
+  net_asset: number
+}
+
 // === Shared Ledger ===
 export type SplitMethod = 'EQUAL' | 'FULL_OWNER' | 'FULL_PARTNER' | 'CUSTOM'
 export type ExpenseCategory = 'food' | 'transport' | 'accommodation' | 'ticket' | 'supplies' | 'settlement' | 'other'
