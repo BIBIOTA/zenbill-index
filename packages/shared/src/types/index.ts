@@ -325,3 +325,18 @@ export interface InviteInfo {
   currency: string
   partner_name: string
 }
+
+// === Notifications ===
+export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SETTLEMENT_CREATED'
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  body: string
+  resource_type: string
+  resource_id: string | null
+  is_read: boolean
+  created_at: string
+}
