@@ -48,3 +48,10 @@ export function getBillingCycle(closingDay: number, offset: number = 0): Billing
     label: `${shortFmt(startDate)} ~ ${shortFmt(endDate)}`,
   }
 }
+
+/**
+ * Returns the previous billing cycle relative to the given cycle offset.
+ */
+export function getPreviousBillingCycle(closingDay: number, offset: number = 0): BillingCycle {
+  return getBillingCycle(closingDay, offset - 1)
+}
