@@ -11,6 +11,8 @@ export interface TransactionFilters {
   search?: string
   start_date?: string
   end_date?: string
+  prev_start_date?: string
+  prev_end_date?: string
 }
 
 export function useTransactions(filters: TransactionFilters = {}) {
