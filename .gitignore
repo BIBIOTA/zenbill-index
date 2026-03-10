@@ -13,6 +13,14 @@ frontend/
 .vscode/
 .idea/
 
+# Build artifacts
+*.apk
+*.aab
+
+# Firebase config (contains project-specific keys)
+google-services.json
+GoogleService-Info.plist
+
 # Environment and sensitive files
 .env
 .env.local

@@ -327,7 +327,7 @@ export interface InviteInfo {
 }
 
 // === Notifications ===
-export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SETTLEMENT_CREATED'
+export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SHARED_EXPENSE_DELETED' | 'SETTLEMENT_CREATED'
 
 export interface Notification {
   id: string
