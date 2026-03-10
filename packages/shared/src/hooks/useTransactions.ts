@@ -92,6 +92,7 @@ export function useBatchDeferTransactions() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['accounts'] })
     },
   })
 }
