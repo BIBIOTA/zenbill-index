@@ -55,6 +55,7 @@ export interface Transaction {
   original_amount: number | null
   original_currency: string | null
   exchange_rate: number | null
+  billing_period_deferred: boolean
   running_balance?: number
   settled_at?: string | null
   created_at: string
