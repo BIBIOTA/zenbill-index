@@ -77,6 +77,23 @@ export function useDeleteTransaction() {
   })
 }
 
+export function useBatchDeferTransactions() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ transactionIds, deferred }: { transactionIds: string[]; deferred: boolean }) => {
+      return api.patch<ApiResponse<{ updated_count: number }>>('/transactions/batch-defer', {
+        transaction_ids: transactionIds,
+        deferred,
+      })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+    },
+  })
+}
+
 export function useInfiniteTransactions(filters: Omit<TransactionFilters, 'page'> = {}) {
   const api = getApiClient()
 
