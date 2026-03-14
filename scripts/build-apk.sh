@@ -5,20 +5,20 @@ set -euo pipefail
 # ZenBill APK Build Script (Local Gradle Build)
 # ============================================================
 # Builds Android APK locally using Gradle and uploads to
-# GitHub Release. Replaces the previous EAS cloud build.
+# GitHub Release.
 #
-# Flow:
-#   1. Pre-flight checks (ANDROID_HOME, gh CLI, auth)
-#   2. Parse version from latest git tag (vX.Y.Z)
-#   3. Update app.json with version
-#   4. expo prebuild --platform android --clean
-#   5. Inject signing config into build.gradle
-#   6. ./gradlew assembleRelease
-#   7. Upload APK to GitHub Release
-#   8. Restore app.json
-#
-# Usage: ./scripts/build-apk.sh
+# Usage:
+#   ./scripts/build-apk.sh              # Production build
+#   ./scripts/build-apk.sh --preview    # Preview/staging build
 # ============================================================
+
+# Parse arguments
+BUILD_VARIANT="production"
+for arg in "$@"; do
+    case "$arg" in
+        --preview) BUILD_VARIANT="preview" ;;
+    esac
+done
 
 # Ensure ANDROID_HOME is set (git hooks may have minimal env)
 export ANDROID_HOME="${ANDROID_HOME:-${HOME}/Library/Android/sdk}"
@@ -29,7 +29,13 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 APP_DIR="${PROJECT_DIR}/app"
 LOG_FILE="${PROJECT_DIR}/deploy.log"
 REPO="BIBIOTA/zenbill-index"
-API_URL="https://zenapi.bibiota.com/api/v1"
+
+if [[ "${BUILD_VARIANT}" == "preview" ]]; then
+    API_URL="https://yukimac-mini.echo-mercat.ts.net:8090/api/v1"
+    export APP_VARIANT="preview"
+else
+    API_URL="https://zenapi.bibiota.com/api/v1"
+fi
 
 log() {
     local msg="[$(date '+%Y-%m-%d %H:%M:%S')] [build-apk] $1"
@@ -38,15 +44,14 @@ log() {
 }
 
 cleanup() {
-    log "Restoring app.json..."
-    git -C "${APP_DIR}" checkout -- app.json 2>/dev/null || true
+    log "Cleanup complete."
 }
 
 # ============================================================
 # Phase 1: Pre-flight checks
 # ============================================================
 
-log "=== Starting local APK build ==="
+log "=== Starting local APK build (${BUILD_VARIANT}) ==="
 log "Git SHA: $(git -C "${PROJECT_DIR}" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 
 # ANDROID_HOME check with fallback
@@ -103,40 +108,42 @@ VERSION="${V_MAJOR}.${V_MINOR}.${V_PATCH}"
 VERSION_CODE=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
 NEW_TAG="v${VERSION}"
 
-# Create and push new tag
-git tag "${NEW_TAG}"
-git push github "${NEW_TAG}"
-log "Created and pushed tag: ${NEW_TAG} (version: ${VERSION}, code: ${VERSION_CODE})"
+# Create and push new tag (skip for preview builds)
+if [[ "${BUILD_VARIANT}" != "preview" ]]; then
+    git tag "${NEW_TAG}"
+    git push github "${NEW_TAG}"
+    log "Created and pushed tag: ${NEW_TAG} (version: ${VERSION}, code: ${VERSION_CODE})"
+else
+    log "Preview build: skipping tag creation (version: ${VERSION}, code: ${VERSION_CODE})"
+fi
 
-APK_NAME="zenbill-v${VERSION}.apk"
+if [[ "${BUILD_VARIANT}" == "preview" ]]; then
+    APK_NAME="zenbill-dev-v${VERSION}.apk"
+else
+    APK_NAME="zenbill-v${VERSION}.apk"
+fi
 log "Will produce: ${APK_NAME}"
 
 # ============================================================
-# Phase 3: Update app.json with version
+# Phase 3: Set version via environment variables
 # ============================================================
 
-# Set trap to restore app.json on exit (success or failure)
+# Set trap for cleanup on exit
 trap cleanup EXIT
 
 cd "${APP_DIR}"
 
-VERSION="${VERSION}" VERSION_CODE="${VERSION_CODE}" node -e "
-const fs = require('fs');
-const appJson = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-appJson.expo.version = process.env.VERSION;
-appJson.expo.android = appJson.expo.android || {};
-appJson.expo.android.versionCode = parseInt(process.env.VERSION_CODE, 10);
-fs.writeFileSync('app.json', JSON.stringify(appJson, null, 2) + '\n');
-console.log('app.json updated: version=' + process.env.VERSION + ', versionCode=' + process.env.VERSION_CODE);
-"
-log "app.json updated with version ${VERSION} (code: ${VERSION_CODE})"
+# app.config.ts reads ZENBILL_VERSION and ZENBILL_VERSION_CODE from env
+export ZENBILL_VERSION="${VERSION}"
+export ZENBILL_VERSION_CODE="${VERSION_CODE}"
+log "Version set via env: ZENBILL_VERSION=${VERSION}, ZENBILL_VERSION_CODE=${VERSION_CODE}"
 
 # ============================================================
 # Phase 4: Expo prebuild
 # ============================================================
 
 log "Running expo prebuild (clean)..."
-if EXPO_PUBLIC_API_BASE_URL="${API_URL}" npx expo prebuild --platform android --clean 2>&1 | tee -a "${LOG_FILE}"; then
+if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" npx expo prebuild --platform android --clean 2>&1 | tee -a "${LOG_FILE}"; then
     log "Expo prebuild completed."
 else
     log "ERROR: Expo prebuild failed."
@@ -204,7 +211,7 @@ log "Signing config injected."
 cd "${APP_DIR}/android"
 
 log "Running Gradle assembleRelease..."
-if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
+if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
     log "Gradle build completed."
 else
     log "ERROR: Gradle assembleRelease failed."
@@ -227,43 +234,48 @@ cp "${APK_SOURCE}" "${APK_DEST}"
 log "APK copied to: ${APK_DEST}"
 
 # ============================================================
-# Phase 8: Upload to GitHub Release
+# Phase 8: Upload to GitHub Release (production only)
 # ============================================================
 
 cd "${PROJECT_DIR}"
 
-log "Uploading ${APK_NAME} to GitHub Release ${NEW_TAG}..."
-
-# Check if release already exists for this tag
-if gh release view "${NEW_TAG}" --repo "${REPO}" &>/dev/null; then
-    # Release exists: upload (overwrite if APK already attached)
-    log "Release ${NEW_TAG} exists. Uploading APK with --clobber..."
-    if gh release upload "${NEW_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
-        log "APK uploaded to existing release ${NEW_TAG}."
-    else
-        log "ERROR: Failed to upload APK to release."
-        exit 1
-    fi
+if [[ "${BUILD_VARIANT}" == "preview" ]]; then
+    log "=== Preview APK build complete ==="
+    log "Version: ${VERSION}"
+    log "APK: ${APK_DEST}"
+    log "Install: adb install ${APK_DEST}"
 else
-    # Create new release with APK
-    log "Creating new release ${NEW_TAG}..."
-    if gh release create "${NEW_TAG}" "${APK_DEST}" \
-        --repo "${REPO}" \
-        --title "ZenBill ${NEW_TAG}" \
-        --notes "ZenBill ${VERSION} release" \
-        2>&1 | tee -a "${LOG_FILE}"; then
-        log "Release ${NEW_TAG} created with APK."
+    log "Uploading ${APK_NAME} to GitHub Release ${NEW_TAG}..."
+
+    # Check if release already exists for this tag
+    if gh release view "${NEW_TAG}" --repo "${REPO}" &>/dev/null; then
+        log "Release ${NEW_TAG} exists. Uploading APK with --clobber..."
+        if gh release upload "${NEW_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
+            log "APK uploaded to existing release ${NEW_TAG}."
+        else
+            log "ERROR: Failed to upload APK to release."
+            exit 1
+        fi
     else
-        log "ERROR: Failed to create release."
-        exit 1
+        log "Creating new release ${NEW_TAG}..."
+        if gh release create "${NEW_TAG}" "${APK_DEST}" \
+            --repo "${REPO}" \
+            --title "ZenBill ${NEW_TAG}" \
+            --notes "ZenBill ${VERSION} release" \
+            2>&1 | tee -a "${LOG_FILE}"; then
+            log "Release ${NEW_TAG} created with APK."
+        else
+            log "ERROR: Failed to create release."
+            exit 1
+        fi
     fi
+
+    # Clean up the copied APK from project root
+    rm -f "${APK_DEST}"
+    log "Cleaned up ${APK_DEST}"
+
+    log "=== APK build and upload complete ==="
+    log "Version: ${VERSION}"
+    log "Tag: ${NEW_TAG}"
+    log "Release: https://github.com/${REPO}/releases/tag/${NEW_TAG}"
 fi
-
-# Clean up the copied APK from project root
-rm -f "${APK_DEST}"
-log "Cleaned up ${APK_DEST}"
-
-log "=== APK build and upload complete ==="
-log "Version: ${VERSION}"
-log "Tag: ${NEW_TAG}"
-log "Release: https://github.com/${REPO}/releases/tag/${NEW_TAG}"
