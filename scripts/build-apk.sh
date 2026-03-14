@@ -234,20 +234,41 @@ cp "${APK_SOURCE}" "${APK_DEST}"
 log "APK copied to: ${APK_DEST}"
 
 # ============================================================
-# Phase 8: Upload to GitHub Release (production only)
+# Phase 8: Upload to GitHub Release
 # ============================================================
 
 cd "${PROJECT_DIR}"
 
+# For preview builds, attach to the latest existing release
+# For production builds, create a new release with the new tag
 if [[ "${BUILD_VARIANT}" == "preview" ]]; then
-    log "=== Preview APK build complete ==="
+    LATEST_RELEASE_TAG=$(gh release list --repo "${REPO}" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+    if [[ -z "${LATEST_RELEASE_TAG}" ]]; then
+        log "ERROR: No existing release found to attach preview APK."
+        log "APK available locally: ${APK_DEST}"
+        exit 1
+    fi
+
+    log "Uploading ${APK_NAME} to latest release ${LATEST_RELEASE_TAG}..."
+    if gh release upload "${LATEST_RELEASE_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
+        log "Preview APK uploaded to release ${LATEST_RELEASE_TAG}."
+    else
+        log "ERROR: Failed to upload preview APK."
+        exit 1
+    fi
+
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST_RELEASE_TAG}/${APK_NAME}"
+
+    rm -f "${APK_DEST}"
+    log "Cleaned up ${APK_DEST}"
+
+    log "=== Preview APK build and upload complete ==="
     log "Version: ${VERSION}"
-    log "APK: ${APK_DEST}"
-    log "Install: adb install ${APK_DEST}"
+    log "Release: https://github.com/${REPO}/releases/tag/${LATEST_RELEASE_TAG}"
+    log "Download: ${DOWNLOAD_URL}"
 else
     log "Uploading ${APK_NAME} to GitHub Release ${NEW_TAG}..."
 
-    # Check if release already exists for this tag
     if gh release view "${NEW_TAG}" --repo "${REPO}" &>/dev/null; then
         log "Release ${NEW_TAG} exists. Uploading APK with --clobber..."
         if gh release upload "${NEW_TAG}" "${APK_DEST}" --repo "${REPO}" --clobber 2>&1 | tee -a "${LOG_FILE}"; then
@@ -270,7 +291,6 @@ else
         fi
     fi
 
-    # Clean up the copied APK from project root
     rm -f "${APK_DEST}"
     log "Cleaned up ${APK_DEST}"
 
