@@ -270,6 +270,27 @@ APP_ENV=test go test ./internal/repository/... -v
 go test ./... -v
 ```
 
+### 打包 APK
+
+使用 `scripts/build-apk.sh` 進行本地 Gradle 建置並上傳至 GitHub Release (`BIBIOTA/zenbill-index`)。
+
+```bash
+# 正式版（自動 bump version tag、上傳 GitHub Release）
+./scripts/build-apk.sh
+
+# 測試版（Preview APK，可與正式版同時安裝）
+./scripts/build-apk.sh --preview
+```
+
+**測試版特性：**
+- Package name: `com.zenbill.app.preview`（與正式版 `com.zenbill.app` 並存）
+- App 名稱: `ZenBill Dev`（附橘色 DEV 角標）
+- API: 指向 Tailscale 測試環境 (`yukimac-mini.echo-mercat.ts.net:8090`)
+- 推播通知: 停用
+- 自動上傳至最新的 GitHub Release，完成後輸出下載連結
+
+**當使用者說「打包測試版」時：** 直接執行 `./scripts/build-apk.sh --preview`，完成後提供下載連結。
+
 ### 手動同步發票 (manual_sync)
 
 `cmd/manual_sync` 是用於手動同步財政部電子發票平台的工具程式。
