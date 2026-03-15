@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
-import type { Account, ApiResponse, CreateAccountInput } from '../types/index.ts'
+import type { Account, ApiResponse, CreateAccountInput, BuyStockInput, SellStockInput } from '../types/index.ts'
 
-const typeOrder: Record<string, number> = { CASH: 0, BANK: 1, CRYPTO: 2, CREDIT: 3 }
+const typeOrder: Record<string, number> = { CASH: 0, BANK: 1, CRYPTO: 2, STOCK: 3, CREDIT: 4 }
 
 function sortAccounts(accounts: Account[]): Account[] {
   return accounts.slice().sort((a, b) => {
@@ -57,5 +57,41 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  })
+}
+
+export function useRefreshStockPrices() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post<ApiResponse<Account[]>>('/accounts/stocks/refresh-prices').then(r => r.data.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export function useBuyStock() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: BuyStockInput) =>
+      api.post<ApiResponse<Account>>('/accounts/stocks/buy', input).then(r => r.data.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+    },
+  })
+}
+
+export function useSellStock() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SellStockInput) =>
+      api.post<ApiResponse<Account>>('/accounts/stocks/sell', input).then(r => r.data.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounts'] })
+    },
   })
 }
