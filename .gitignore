@@ -41,5 +41,8 @@ logs/
 node_modules/
 vendor/
 
+# Git worktrees
+.worktrees/
+
 # MCP server config (machine-specific paths)
 .mcp.json
