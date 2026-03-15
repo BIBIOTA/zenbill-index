@@ -269,6 +269,7 @@ export interface CreateSharedLedgerInput {
 
 export interface UpdateSharedLedgerInput {
   name?: string
+  currency?: string
   google_sheet_id?: string
   sync_enabled?: boolean
   google_credential_json?: string
