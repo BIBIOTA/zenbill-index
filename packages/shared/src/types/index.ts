@@ -5,7 +5,7 @@ export interface User {
 }
 
 // === Account ===
-export type AccountType = 'BANK' | 'CREDIT' | 'CASH' | 'CRYPTO'
+export type AccountType = 'BANK' | 'CREDIT' | 'CASH' | 'CRYPTO' | 'STOCK'
 
 export interface Account {
   id: string
@@ -20,6 +20,13 @@ export interface Account {
   payment_due_day: number | null
   auto_pay_from_id: string | null
   auto_pay_enabled: boolean
+  // Stock fields
+  stock_symbol: string
+  stock_market: string
+  shares_held: number
+  avg_cost_price: number
+  last_price: number
+  last_price_at: string | null
   created_at: string
   updated_at: string
 }
@@ -35,6 +42,23 @@ export interface CreateAccountInput {
   payment_due_day?: number
   auto_pay_from_id?: string
   auto_pay_enabled?: boolean
+}
+
+// === Stock ===
+export interface BuyStockInput {
+  stock_symbol: string
+  stock_market: 'TW' | 'US'
+  shares: number
+  price_per_share: number
+  from_account_id: string
+  account_id?: string
+}
+
+export interface SellStockInput {
+  account_id: string
+  shares: number
+  price_per_share: number
+  to_account_id: string
 }
 
 // === Transaction ===
