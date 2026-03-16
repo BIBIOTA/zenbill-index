@@ -50,7 +50,7 @@ export interface BuyStockInput {
   stock_market: 'TW' | 'US'
   shares: number
   price_per_share: number
-  from_account_id: string
+  from_account_id?: string
   account_id?: string
 }
 
