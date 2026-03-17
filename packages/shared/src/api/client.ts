@@ -137,7 +137,13 @@ export function createApiClient(config: ApiClientConfig) {
   }
 
   return {
-    get: <T>(path: string) => request<T>('GET', path),
+    get: <T>(path: string, options?: { params?: Record<string, string> }) => {
+      if (options?.params) {
+        const qs = new URLSearchParams(options.params).toString()
+        return request<T>('GET', `${path}?${qs}`)
+      }
+      return request<T>('GET', path)
+    },
     post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
     put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
     patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),

@@ -112,7 +112,7 @@ export function useStockSearch(query: string) {
     queryKey: ['stock-search', query],
     queryFn: () =>
       api.get<ApiResponse<StockSearchResult[]>>('/accounts/stocks/search', { params: { q: query } })
-        .then((r) => r.data.data),
+        .then((r) => r.data),
     enabled: query.length >= 1,
     staleTime: 30_000,
   })
