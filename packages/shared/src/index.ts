@@ -3,6 +3,7 @@ export { createApiClient, setApiClient, getApiClient, ApiError } from './api/cli
 export type { TokenStorage, ApiClientConfig, ApiClient } from './api/client.ts'
 export * from './utils/billingCycle.ts'
 export * from './utils/stockTransaction.ts'
+export * from './utils/stockCalculations.ts'
 export * from './hooks/useAccounts.ts'
 export * from './hooks/useTransactions.ts'
 export * from './hooks/useInvoices.ts'

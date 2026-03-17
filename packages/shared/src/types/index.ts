@@ -7,6 +7,8 @@ export interface User {
 // === Account ===
 export type AccountType = 'BANK' | 'CREDIT' | 'CASH' | 'CRYPTO' | 'STOCK'
 
+export type StockMarket = 'TW' | 'US'
+
 export interface Account {
   id: string
   user_id: string
@@ -20,9 +22,9 @@ export interface Account {
   payment_due_day: number | null
   auto_pay_from_id: string | null
   auto_pay_enabled: boolean
-  // Stock fields
+  // Stock fields (only meaningful for STOCK accounts)
   stock_symbol: string
-  stock_market: string
+  stock_market: StockMarket | ''
   shares_held: number
   avg_cost_price: number
   last_price: number
@@ -42,12 +44,17 @@ export interface CreateAccountInput {
   payment_due_day?: number
   auto_pay_from_id?: string
   auto_pay_enabled?: boolean
+  // Stock fields (used when type === 'STOCK')
+  stock_symbol?: string
+  stock_market?: StockMarket
+  price_per_share?: number
+  from_account_id?: string
 }
 
 // === Stock ===
 export interface BuyStockInput {
   stock_symbol: string
-  stock_market: 'TW' | 'US'
+  stock_market: StockMarket
   shares: number
   price_per_share: number
   from_account_id?: string
@@ -64,7 +71,7 @@ export interface SellStockInput {
 export interface StockSearchResult {
   symbol: string
   name: string
-  market: 'TW' | 'US'
+  market: StockMarket
 }
 
 // === Transaction ===

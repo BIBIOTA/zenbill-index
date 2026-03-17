@@ -81,10 +81,6 @@ export function useBuyStock() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
-      // Chain refresh to get real-time market price after buy
-      api.post('/accounts/stocks/refresh-prices')
-        .then(() => qc.invalidateQueries({ queryKey: ['accounts'] }))
-        .catch(() => {})
     },
   })
 }
@@ -98,10 +94,6 @@ export function useSellStock() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
-      // Chain refresh to get real-time market price after sell
-      api.post('/accounts/stocks/refresh-prices')
-        .then(() => qc.invalidateQueries({ queryKey: ['accounts'] }))
-        .catch(() => {})
     },
   })
 }
