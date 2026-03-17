@@ -25,10 +25,12 @@ When creating a stock account, users can search for stocks by symbol or company 
 GET /accounts/stocks/search?q={query}
 ```
 
-**Response:**
+**Response** (uses standard `ApiResponse<T>` wrapper):
 ```json
 {
-  "results": [
+  "code": 200,
+  "message": "success",
+  "data": [
     { "symbol": "2330.TW", "name": "台積電", "market": "TW" },
     { "symbol": "AAPL", "name": "Apple Inc.", "market": "US" }
   ]
