@@ -379,3 +379,13 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+// Currency Settings
+export interface CurrencySetting {
+  currency_code: string
+  multiplier: number
+}
+
+export interface UpdateCurrencySettingsInput {
+  settings: CurrencySetting[]
+}
