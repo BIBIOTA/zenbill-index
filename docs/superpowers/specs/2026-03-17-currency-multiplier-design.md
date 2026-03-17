@@ -70,7 +70,7 @@ CREATE TABLE user_currency_settings (
 
 **規則：**
 - 不在 request 裡的幣別 → 刪除該設定（回歸 multiplier = 1）
-- `multiplier` 必須 > 0
+- `multiplier` 必須 > 0 且 <= 1,000,000（避免溢位）
 - `currency_code` 必須是合法的 ISO 4217 代碼
 
 ## 後端架構（Clean Architecture）
@@ -84,11 +84,15 @@ type CurrencySetting struct {
     ID           uuid.UUID
     UserID       uuid.UUID
     CurrencyCode string
-    Multiplier   decimal.Decimal
+    Multiplier   float64  // 使用 float64 與現有 codebase 一致
     CreatedAt    time.Time
     UpdatedAt    time.Time
 }
+```
 
+Repository 介面定義在 `backend/internal/domain/repository.go`（與現有慣例一致）：
+
+```go
 type CurrencySettingRepository interface {
     FindByUserID(ctx context.Context, userID uuid.UUID) ([]CurrencySetting, error)
     UpsertBatch(ctx context.Context, userID uuid.UUID, settings []CurrencySetting) error
@@ -100,7 +104,8 @@ type CurrencySettingRepository interface {
 `backend/internal/repository/currency_setting_repository.go`
 
 - GORM 實作
-- `UpsertBatch`：在 transaction 內先刪除使用者所有設定，再批次插入新設定
+- `UpsertBatch`：使用 PostgreSQL `ON CONFLICT (user_id, currency_code) DO UPDATE` 做 true upsert，搭配 `DELETE WHERE currency_code NOT IN (...)` 移除不在列表中的設定
+- Repository 內部自行管理 DB transaction（不需跨 repo 協調）
 
 ### Usecase Layer
 
@@ -123,7 +128,7 @@ type CurrencySettingRepository interface {
 **位置：** 設定區域新增「幣別單位」頁面
 
 **頁面內容：**
-- 列出使用者「有使用中帳戶」的幣別（不列全部 170+ 幣別）
+- 列出使用者「有使用中帳戶」的幣別（從現有 `useAccounts()` hook 取得帳戶清單，前端提取不重複的 currency code）
 - 每個幣別一列：旗幟 + 幣別代碼 + 名稱 + 倍數輸入框
 - 輸入框預設顯示 `1`（未設定過的幣別）
 - 儲存按鈕，一次送出所有變更
@@ -142,9 +147,9 @@ App 和 Web 共用同一個 hook。
 
 **行為：**
 1. 輸入框根據目前帳戶的幣別，查詢 `getMultiplier(currencyCode)`
-2. 如果 multiplier > 1，輸入框下方顯示即時預覽：`實際金額：₫50,000`
+2. 如果 multiplier != 1，輸入框下方顯示即時預覽：`實際金額：₫50,000`
 3. 送出時：`actualAmount = inputValue × multiplier`
-4. 如果 multiplier = 1，不顯示預覽（跟現在一樣）
+4. 如果 multiplier = 1（或未設定），不顯示預覽（跟現在一樣）
 
 **影響元件：**
 - `app/components/transactions/TransactionForm.tsx` — App 交易表單
