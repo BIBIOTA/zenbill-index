@@ -29,8 +29,8 @@ GET /accounts/stocks/search?q={query}
 ```json
 {
   "results": [
-    { "symbol": "2330.TW", "name": "台積電", "market": "TW", "price": 580.0 },
-    { "symbol": "AAPL", "name": "Apple Inc.", "market": "US", "price": 189.5 }
+    { "symbol": "2330.TW", "name": "台積電", "market": "TW" },
+    { "symbol": "AAPL", "name": "Apple Inc.", "market": "US" }
   ]
 }
 ```
@@ -43,8 +43,7 @@ Add `Search` method to `pkg/stockprice/provider.go`:
 type SearchResult struct {
     Symbol   string
     Name     string
-    Market   string  // "TW", "US", "OTHER"
-    Price    float64
+    Market   string  // "TW" or "US" only
 }
 
 type Provider interface {
@@ -58,14 +57,16 @@ type Provider interface {
 
 Call `https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0`.
 
-Filter results: only `quoteType == "EQUITY"`.
+Filter results: only `quoteType == "EQUITY"`, and only TW/US markets (exclude OTHER).
+
+Note: Yahoo Finance search API does not return price data. To keep search fast, `price` is omitted from search results (returned as `0`). Price is informational only since users enter their own buy price.
 
 ### Market Mapping
 
 Yahoo `exchange` field to ZenBill market:
 - `"TAI"` → `"TW"`
 - `"NMS"`, `"NYQ"`, `"NGM"`, `"PCX"` → `"US"`
-- Others → `"OTHER"`
+- Others → excluded from results (not supported)
 
 ### Symbol Handling
 
@@ -91,8 +92,8 @@ Replace the manual `stock_symbol` text input + TW/US toggle with a **search-driv
 2. Debounce 500ms → call `GET /accounts/stocks/search?q=...`
 3. Dropdown appears below input with results:
    ```
-   2330.TW   台積電      TWD 580.0
-   AAPL      Apple Inc.  USD 189.5
+   2330.TW   台積電       TW
+   AAPL      Apple Inc.   US
    ```
 4. User taps a result → auto-fill:
    - `stock_symbol` ← selected symbol
@@ -117,8 +118,7 @@ Replace the manual `stock_symbol` text input + TW/US toggle with a **search-driv
 export interface StockSearchResult {
   symbol: string   // "2330.TW"
   name: string     // "台積電"
-  market: string   // "TW" | "US" | "OTHER"
-  price: number    // latest price, 0 if unavailable
+  market: string   // "TW" | "US"
 }
 ```
 
@@ -139,3 +139,4 @@ export function useStockSearch(query: string) {
 - `BuyStockInput` — no changes needed; `stock_symbol` and `stock_market` already exist
 - Account name — changes from default `stock_symbol` to `name` from search result; user can still edit
 - Buy/Sell flow — unchanged; search only affects the account creation step
+- **Symbol suffix removal** — current `AccountQuickCreate` manually appends `.TW` to symbols. After this change, symbols come pre-suffixed from Yahoo search results (e.g., `2330.TW`), so the manual suffix logic in `handleSubmit` must be removed
