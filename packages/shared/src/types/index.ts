@@ -55,6 +55,7 @@ export interface CreateAccountInput {
 export interface BuyStockInput {
   stock_symbol: string
   stock_market: StockMarket
+  stock_name?: string
   shares: number
   price_per_share: number
   from_account_id?: string

@@ -1,5 +1,18 @@
 import type { Account } from '../types/index.ts'
 
+/** Strip market suffix from stock symbol (e.g. "2330.TW" → "2330", "AAPL" → "AAPL") */
+export function getBareStockSymbol(symbol: string): string {
+  return symbol.replace(/\.(TW|TWO|US)$/i, '')
+}
+
+/** Format stock display label: "2330 台積電", "AAPL Apple Inc." */
+export function formatStockLabel(account: Pick<Account, 'stock_symbol' | 'name'>): string {
+  const bare = getBareStockSymbol(account.stock_symbol)
+  // Avoid "0050 0050" when name was incorrectly set to the symbol
+  if (!bare || bare === account.name) return account.name
+  return `${bare} ${account.name}`
+}
+
 export interface StockPnL {
   pnl: number
   pnlPercent: number
