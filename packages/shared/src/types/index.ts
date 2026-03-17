@@ -58,7 +58,13 @@ export interface SellStockInput {
   account_id: string
   shares: number
   price_per_share: number
-  to_account_id: string
+  to_account_id?: string
+}
+
+export interface StockSearchResult {
+  symbol: string
+  name: string
+  market: 'TW' | 'US'
 }
 
 // === Transaction ===

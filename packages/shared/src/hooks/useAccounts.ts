@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
-import type { Account, ApiResponse, CreateAccountInput, BuyStockInput, SellStockInput } from '../types/index.ts'
+import type { Account, ApiResponse, CreateAccountInput, BuyStockInput, SellStockInput, StockSearchResult } from '../types/index.ts'
 
 const typeOrder: Record<string, number> = { CASH: 0, BANK: 1, CRYPTO: 2, STOCK: 3, CREDIT: 4 }
 
@@ -80,6 +80,11 @@ export function useBuyStock() {
       api.post<ApiResponse<Account>>('/accounts/stocks/buy', input).then(r => r.data.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      // Chain refresh to get real-time market price after buy
+      api.post('/accounts/stocks/refresh-prices')
+        .then(() => qc.invalidateQueries({ queryKey: ['accounts'] }))
+        .catch(() => {})
     },
   })
 }
@@ -92,6 +97,23 @@ export function useSellStock() {
       api.post<ApiResponse<Account>>('/accounts/stocks/sell', input).then(r => r.data.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      // Chain refresh to get real-time market price after sell
+      api.post('/accounts/stocks/refresh-prices')
+        .then(() => qc.invalidateQueries({ queryKey: ['accounts'] }))
+        .catch(() => {})
     },
+  })
+}
+
+export function useStockSearch(query: string) {
+  const api = getApiClient()
+  return useQuery({
+    queryKey: ['stock-search', query],
+    queryFn: () =>
+      api.get<ApiResponse<StockSearchResult[]>>('/accounts/stocks/search', { params: { q: query } })
+        .then((r) => r.data.data),
+    enabled: query.length >= 1,
+    staleTime: 30_000,
   })
 }
