@@ -1,5 +1,9 @@
 # ZenBill 專案開發指南
 
+## 0. 回覆語言
+
+**預設語言：繁體中文（zh-TW）。** 除非使用者明確要求使用其他語言，否則所有回覆、說明、註解與報告一律使用繁體中文。程式碼中的變數名稱、函式名稱等維持英文。
+
 ## 1. 專案概觀
 
 **專案名稱:** ZenBill
@@ -511,10 +515,16 @@ Phase 4: 文件與收尾     → 更新文件與進度追蹤
    - 每完成一個模組後執行 `lint-check` skill
    - 確保程式碼可編譯: `go build ./...`
 
+4. **跨平台同步實作**
+   - 所有功能開發或修改，必須同時在 APP（`app/`）和 Web（`frontend/`）兩端實作
+   - 共享邏輯優先放入 `packages/shared/`（hooks、types、stores）
+   - 不允許只完成單一平台就標記功能完成
+
 **檢查點:**
 - ✅ 程式碼遵循 Clean Architecture
 - ✅ 程式碼通過 `lint-check`
 - ✅ 程式碼編譯成功
+- ✅ APP 和 Web 兩端皆已實作或同步更新
 
 **工具:**
 - `scaffold-domain` skill（產生 Domain Layer 模板）
