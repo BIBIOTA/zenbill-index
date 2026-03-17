@@ -65,7 +65,7 @@ export function useRefreshStockPrices() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
-      api.post<ApiResponse<Account[]>>('/accounts/stocks/refresh-prices').then(r => r.data.data),
+      api.post<ApiResponse<Account[]>>('/accounts/stocks/refresh-prices').then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
     },
@@ -77,7 +77,7 @@ export function useBuyStock() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: BuyStockInput) =>
-      api.post<ApiResponse<Account>>('/accounts/stocks/buy', input).then(r => r.data.data),
+      api.post<ApiResponse<Account>>('/accounts/stocks/buy', input).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
@@ -90,7 +90,7 @@ export function useSellStock() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: SellStockInput) =>
-      api.post<ApiResponse<Account>>('/accounts/stocks/sell', input).then(r => r.data.data),
+      api.post<ApiResponse<Account>>('/accounts/stocks/sell', input).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
@@ -98,12 +98,12 @@ export function useSellStock() {
   })
 }
 
-export function useStockSearch(query: string) {
+export function useStockSearch(query: string, market: 'TW' | 'US' = 'TW') {
   const api = getApiClient()
   return useQuery({
-    queryKey: ['stock-search', query],
+    queryKey: ['stock-search', query, market],
     queryFn: () =>
-      api.get<ApiResponse<StockSearchResult[]>>('/accounts/stocks/search', { params: { q: query } })
+      api.get<ApiResponse<StockSearchResult[]>>('/accounts/stocks/search', { params: { q: query, market } })
         .then((r) => r.data),
     enabled: query.length >= 1,
     staleTime: 30_000,
