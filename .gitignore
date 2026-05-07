@@ -46,3 +46,6 @@ vendor/
 
 # MCP server config (machine-specific paths)
 .mcp.json
+
+# React Native app (tracked in zenbill-app repo)
+app/

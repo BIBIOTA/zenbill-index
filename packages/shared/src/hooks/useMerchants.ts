@@ -30,22 +30,6 @@ export function useUpdateMerchant() {
   })
 }
 
-/**
- * Find duplicate merchant by name (case-insensitive, trimmed).
- * Pass excludeId when editing to avoid self-match.
- */
-export function findDuplicateMerchant(
-  merchants: Merchant[] | undefined,
-  name: string,
-  excludeId?: string,
-): Merchant | undefined {
-  const trimmed = name.trim()
-  if (!trimmed || !merchants) return undefined
-  return merchants.find(
-    (m) => m.name.trim().toLowerCase() === trimmed.toLowerCase() && m.id !== excludeId,
-  )
-}
-
 export function useDeleteMerchant() {
   const api = getApiClient()
   const qc = useQueryClient()

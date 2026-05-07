@@ -31,7 +31,11 @@ LOG_FILE="${PROJECT_DIR}/deploy.log"
 REPO="BIBIOTA/zenbill-index"
 
 if [[ "${BUILD_VARIANT}" == "preview" ]]; then
-    API_URL="https://yukimac-mini.echo-mercat.ts.net:8090/api/v1"
+    if [[ -z "${ZENBILL_PREVIEW_API_URL:-}" ]]; then
+        echo "ERROR: ZENBILL_PREVIEW_API_URL is not set. Add it to your ~/.zshrc" >&2
+        exit 1
+    fi
+    API_URL="${ZENBILL_PREVIEW_API_URL}"
     export APP_VARIANT="preview"
 else
     API_URL="https://zenapi.bibiota.com/api/v1"
