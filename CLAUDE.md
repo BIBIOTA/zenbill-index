@@ -8,6 +8,8 @@ ZenBill 是以開發者為導向的自動化記帳系統，核心功能：電子
 
 **技術棧:** Go 1.22+, PostgreSQL 16, Docker, Gin, GORM, Viper, Playwright, Tesseract OCR
 
+> **注意:** `backend/` 是獨立的 Git Repository，有自己的 `.git/` 和 `go.mod`。
+
 ## 架構導航
 
 | 目的 | 位置 |
@@ -17,14 +19,12 @@ ZenBill 是以開發者為導向的自動化記帳系統，核心功能：電子
 | 查發票爬蟲實作細節 | `SPEC.md §4` |
 | 查規則引擎設計 | `SPEC.md §5` |
 | 查測試案例 | `SPEC.md §6` |
-| 查開發進度 / TODO | `SPEC.md §7` |
+| 查開發進度 / TODO | `SPEC.md §7` 或使用 `check-progress` skill |
 | 實作業務邏輯 | `backend/internal/usecase/` |
 | 定義資料結構 | `backend/internal/domain/` |
 | 實作資料存取 | `backend/internal/repository/` |
 | 實作 API 端點 | `backend/internal/delivery/http/` |
 | 發票爬蟲套件 | `backend/pkg/einvoice/` |
-
-> **注意:** `backend/` 是獨立的 Git Repository，有自己的 `.git/`。
 
 ## 常用指令
 
@@ -73,7 +73,7 @@ docker exec -it zenbill_api /app/manual_sync --days 30
 
 ## 4-Phase 開發 SOP
 
-使用 `start-feature` skill 自動執行完整流程。
+使用 `start-feature` skill 自動執行完整流程；若 skill 無法使用，依下方表格手動執行。
 
 | Phase | 重點 | 硬規則 |
 |-------|------|--------|
