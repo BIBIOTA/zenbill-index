@@ -28,6 +28,9 @@ export interface Account {
   shares_held: number
   avg_cost_price: number
   last_price: number
+  previous_close_price: number | null
+  day_change: number | null
+  day_change_percent: number | null
   last_price_at: string | null
   created_at: string
   updated_at: string

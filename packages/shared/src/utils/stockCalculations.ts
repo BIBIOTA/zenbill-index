@@ -26,6 +26,60 @@ export function calculateStockPnL(account: Pick<Account, 'last_price' | 'avg_cos
   return { pnl, pnlPercent }
 }
 
+export interface StockDailyPerformance {
+  pnl: number
+  pnlPercent: number
+  previousMarketValue: number
+}
+
+export interface StockDailySummary extends StockDailyPerformance {
+  includedCount: number
+}
+
+type DailyStockFields = Pick<
+  Account,
+  'shares_held' | 'previous_close_price' | 'day_change' | 'day_change_percent'
+>
+
+export function calculateStockDailyPerformance(account: DailyStockFields): StockDailyPerformance | null {
+  if (
+    account.previous_close_price == null ||
+    account.day_change == null ||
+    account.previous_close_price <= 0
+  ) {
+    return null
+  }
+
+  const previousMarketValue = account.previous_close_price * account.shares_held
+  const pnl = account.day_change * account.shares_held
+  const pnlPercent = account.day_change_percent ?? (pnl / previousMarketValue) * 100
+
+  return { pnl, pnlPercent, previousMarketValue }
+}
+
+export function calculateStockDailySummary(accounts: DailyStockFields[]): StockDailySummary | null {
+  let pnl = 0
+  let previousMarketValue = 0
+  let includedCount = 0
+
+  for (const account of accounts) {
+    const daily = calculateStockDailyPerformance(account)
+    if (!daily) continue
+    pnl += daily.pnl
+    previousMarketValue += daily.previousMarketValue
+    includedCount += 1
+  }
+
+  if (includedCount === 0 || previousMarketValue <= 0) return null
+
+  return {
+    pnl,
+    pnlPercent: (pnl * 100) / previousMarketValue,
+    previousMarketValue,
+    includedCount,
+  }
+}
+
 export interface AssetSummaryEntry {
   assets: number
   liabilities: number
