@@ -45,7 +45,8 @@ export function calculateStockDailyPerformance(account: DailyStockFields): Stock
   if (
     account.previous_close_price == null ||
     account.day_change == null ||
-    account.previous_close_price <= 0
+    account.previous_close_price <= 0 ||
+    account.shares_held <= 0
   ) {
     return null
   }

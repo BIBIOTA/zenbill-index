@@ -50,6 +50,14 @@ describe('calculateStockDailyPerformance', () => {
   it('returns null when day change is missing', () => {
     expect(calculateStockDailyPerformance(stock({ day_change: null }))).toBeNull()
   })
+
+  it('returns null when shares held is zero', () => {
+    expect(calculateStockDailyPerformance(stock({ shares_held: 0 }))).toBeNull()
+  })
+
+  it('returns null when shares held is negative', () => {
+    expect(calculateStockDailyPerformance(stock({ shares_held: -10 }))).toBeNull()
+  })
 })
 
 describe('calculateStockDailySummary', () => {
@@ -60,12 +68,11 @@ describe('calculateStockDailySummary', () => {
       stock({ id: 'tw-3', currency: 'TWD', shares_held: 10, previous_close_price: null, day_change: 3 }),
     ])
 
-    expect(result).toEqual({
-      pnl: 980,
-      pnlPercent: 1.6896551724137931,
-      previousMarketValue: 58000,
-      includedCount: 2,
-    })
+    expect(result).not.toBeNull()
+    expect(result?.pnl).toBe(980)
+    expect(result?.pnlPercent).toBeCloseTo(1.6896551724137931)
+    expect(result?.previousMarketValue).toBe(58000)
+    expect(result?.includedCount).toBe(2)
   })
 
   it('returns null when no stock has complete daily performance data', () => {
