@@ -3,6 +3,8 @@ import type { Account } from '../../types'
 import {
   calculateStockDailyPerformance,
   calculateStockDailySummary,
+  formatStockPriceUpdatedAt,
+  getLatestStockPriceUpdatedAt,
 } from '../stockCalculations'
 
 function stock(overrides: Partial<Account>): Account {
@@ -80,5 +82,46 @@ describe('calculateStockDailySummary', () => {
       stock({ previous_close_price: null }),
       stock({ day_change: null }),
     ])).toBeNull()
+  })
+})
+
+describe('getLatestStockPriceUpdatedAt', () => {
+  it('returns the latest update time from stock accounts with prices', () => {
+    const result = getLatestStockPriceUpdatedAt([
+      stock({ id: 'tw-1', last_price_at: '2026-05-12T09:30:00Z' }),
+      stock({ id: 'tw-2', last_price_at: '2026-05-13T08:15:00Z' }),
+      stock({ id: 'tw-3', last_price_at: null }),
+    ])
+
+    expect(result).toBe('2026-05-13T08:15:00Z')
+  })
+
+  it('ignores non-stock accounts and stock accounts without update time', () => {
+    const result = getLatestStockPriceUpdatedAt([
+      stock({ type: 'BANK', last_price_at: '2026-05-13T08:15:00Z' }),
+      stock({ type: 'STOCK', last_price_at: null }),
+    ])
+
+    expect(result).toBeNull()
+  })
+
+  it('ignores invalid update times', () => {
+    const result = getLatestStockPriceUpdatedAt([
+      stock({ id: 'bad', last_price_at: 'not-a-date' }),
+      stock({ id: 'good', last_price_at: '2026-05-13T08:15:00Z' }),
+    ])
+
+    expect(result).toBe('2026-05-13T08:15:00Z')
+  })
+})
+
+describe('formatStockPriceUpdatedAt', () => {
+  it('formats an update time with zh-TW locale', () => {
+    expect(formatStockPriceUpdatedAt('2026-05-13T08:15:00Z')).toMatch(/2026/)
+  })
+
+  it('returns null for null or invalid update time', () => {
+    expect(formatStockPriceUpdatedAt(null)).toBeNull()
+    expect(formatStockPriceUpdatedAt('not-a-date')).toBeNull()
   })
 })

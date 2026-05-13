@@ -81,6 +81,34 @@ export function calculateStockDailySummary(accounts: DailyStockFields[]): StockD
   }
 }
 
+type StockPriceUpdatedAtFields = Pick<Account, 'type' | 'last_price_at'>
+
+function parseTimestamp(value: string | null): number | null {
+  if (!value) return null
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? null : time
+}
+
+export function getLatestStockPriceUpdatedAt(accounts: StockPriceUpdatedAtFields[]): string | null {
+  let latestValue: string | null = null
+  let latestTime = Number.NEGATIVE_INFINITY
+
+  for (const account of accounts) {
+    if (account.type !== 'STOCK') continue
+    const time = parseTimestamp(account.last_price_at)
+    if (time == null || time <= latestTime) continue
+    latestTime = time
+    latestValue = account.last_price_at
+  }
+
+  return latestValue
+}
+
+export function formatStockPriceUpdatedAt(value: string | null): string | null {
+  if (parseTimestamp(value) == null || value == null) return null
+  return new Date(value).toLocaleString('zh-TW')
+}
+
 export interface AssetSummaryEntry {
   assets: number
   liabilities: number
