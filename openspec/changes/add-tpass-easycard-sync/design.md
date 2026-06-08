@@ -321,3 +321,7 @@ Parser tests：
 
 - [Activity: TPASS Sync Flow](./diagrams/01-activity-tpass-sync-flow.puml) — 描述 APP 手動同步與 worker 排程同步如何處理 credential、OCR 驗證碼、官方查詢、卡片與月摘要 upsert、錯誤狀態分流。
 - [ER: TPASS Data Model](./diagrams/02-er-tpass-data-model.puml) — 描述 `users`、`accounts`、`tpass_credentials`、`tpass_cards`、`tpass_monthly_summaries` 的關係與唯一約束。
+
+## Designs
+
+- [Figma Designs](./designs/figma.md) — APP 設定入口、TPASS 設定頁、卡片詳情、信用卡帳戶 TPASS 區塊與主要狀態的 frame、截圖與驗收條件。
