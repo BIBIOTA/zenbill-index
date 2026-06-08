@@ -9,13 +9,14 @@
   - status: not_started
 - [ ] 1.2 新增 TPASS 資料庫 migration
   - Acceptance: WHEN migration 執行 THEN `tpass_credentials`、`tpass_cards`、`tpass_monthly_summaries` 表與必要 index/unique constraints 被建立
-  - Acceptance: WHEN migration 建立約束 THEN `tpass_cards.linked_account_id` 可為空且 `tpass_monthly_summaries` 以 `user_id + card_id + year + month` 去重
+  - Acceptance: WHEN migration 建立約束 THEN `tpass_cards.linked_account_id` 可為空、非空時同一信用卡帳戶最多綁定一張 TPASS 卡，且 `tpass_monthly_summaries` 以 `user_id + card_id + year + month` 去重
   - Depends on: 1.1
   - Independence: serial
   - status: not_started
 - [ ] 1.3 新增 TPASS repository interfaces
   - Acceptance: WHEN usecase 只依賴 domain interfaces THEN 可設定 credential、upsert 卡片、upsert 月摘要、查詢卡片、查詢月摘要、查詢信用卡關聯 TPASS 資料
   - Acceptance: WHEN repository interface 放在 domain layer THEN domain layer 不 import GORM 或外部框架
+  - Acceptance: WHEN account TPASS projection 被查詢 THEN domain 型別可表達單張綁定卡片、上月摘要、本月摘要、門檻剩餘次數與回饋金額
   - Depends on: 1.1
   - Independence: serial
   - status: not_started
@@ -51,7 +52,8 @@
 - [ ] 3.1 實作 TPASS repository
   - Acceptance: WHEN repository upsert 同一卡號 THEN 使用 `card_number_hash` 去重並更新 `last_seen_at`
   - Acceptance: WHEN repository upsert 同卡同年月摘要 THEN 更新既有 row 而不是新增重複 row
-  - Acceptance: WHEN 查詢信用卡帳戶 TPASS 資料 THEN 只回傳同一使用者且 `linked_account_id` 符合的卡片與摘要
+  - Acceptance: WHEN 查詢信用卡帳戶 TPASS 資料 THEN 只回傳同一使用者且 `linked_account_id` 符合的單張卡片、上月摘要與本月摘要
+  - Acceptance: WHEN 第二張 TPASS 卡片嘗試綁定同一信用卡帳戶 THEN repository 或 usecase 拒絕該綁定並保留既有綁定
   - Depends on: 1.2, 1.3
   - Independence: serial
   - status: not_started
@@ -80,6 +82,7 @@
   - status: not_started
 - [ ] 3.5 實作 TPASS 卡片關聯信用卡 usecase
   - Acceptance: WHEN 使用者關聯卡片到同一使用者的 `CREDIT` 帳戶 THEN `linked_account_id` 被更新
+  - Acceptance: WHEN 該 `CREDIT` 帳戶已綁定另一張 TPASS 卡片 THEN usecase 回傳可映射到 HTTP 409 的錯誤，不覆蓋既有綁定
   - Acceptance: WHEN 使用者關聯卡片到非本人帳戶或非信用卡帳戶 THEN usecase 回傳可映射到 HTTP 400 或 404 的錯誤
   - Acceptance: WHEN 使用者解除關聯 THEN `linked_account_id` 被清空且既有摘要保留
   - Depends on: 3.1
@@ -100,7 +103,8 @@
   - Acceptance: WHEN user 呼叫 `GET /tpass/cards/:id` THEN 回傳單卡詳情與完整卡號
   - Acceptance: WHEN user 呼叫 `PUT /tpass/cards/:id/linked-account` THEN 可關聯或解除信用卡帳戶
   - Acceptance: WHEN user 呼叫 `GET /tpass/summaries` THEN 可依卡片與年月查詢月份回饋摘要
-  - Acceptance: WHEN user 呼叫 `GET /accounts/:id/tpass` THEN 回傳該信用卡帳戶關聯 TPASS 卡片與摘要
+  - Acceptance: WHEN user 呼叫 `GET /accounts/:id/tpass` THEN 回傳該信用卡帳戶綁定的單張 TPASS 卡片、上月/本月運具搭乘彙總、門檻剩餘次數、上月回饋與本月預估回饋
+  - Acceptance: WHEN user 呼叫 `PUT /tpass/cards/:id/linked-account` 且目標信用卡已綁定其他 TPASS 卡 THEN 回傳衝突錯誤
   - Depends on: 3.5, 4.1
   - Independence: serial
   - status: not_started
@@ -139,7 +143,8 @@
   - Independence: serial
   - status: not_started
 - [ ] 5.5 在信用卡帳戶詳情頁新增 TPASS 區塊
-  - Acceptance: WHEN 信用卡帳戶有關聯 TPASS 卡片 THEN 帳戶詳情頁顯示 TPASS 區塊、卡片與月份摘要入口
+  - Acceptance: WHEN 信用卡帳戶有綁定 TPASS 卡片 THEN 帳戶詳情頁顯示 TPASS 區塊且只呈現該單張悠遊卡
+  - Acceptance: WHEN TPASS 區塊顯示 THEN 呈現上月與本月的運具搭乘次數、本月距離回饋門檻還需搭乘幾次、上月回饋與本月預估回饋
   - Acceptance: WHEN 帳戶不是 `CREDIT` 或沒有關聯卡片 THEN 不顯示 TPASS 區塊
   - Acceptance: WHEN TPASS 月份摘要顯示 THEN 不混入既有交易列表
   - Depends on: 5.1, 5.4
@@ -153,7 +158,7 @@
   - Independence: serial
   - status: not_started
 - [ ] 6.2 新增 repository 與 HTTP 測試
-  - Acceptance: WHEN repository tests 執行 THEN card hash 去重、月摘要 upsert、信用卡關聯查詢皆被覆蓋
+  - Acceptance: WHEN repository tests 執行 THEN card hash 去重、月摘要 upsert、信用卡單張綁定約束與帳戶 TPASS projection 查詢皆被覆蓋
   - Acceptance: WHEN handler tests 執行 THEN TPASS protected routes 的成功、未授權、錯誤碼與完整卡號回傳邊界皆被覆蓋
   - Depends on: 4.1, 4.2
   - Independence: serial
@@ -165,7 +170,7 @@
   - status: not_started
 - [ ] 6.4 新增 APP/shared 測試與手動驗證紀錄
   - Acceptance: WHEN shared/package tests 執行 THEN TPASS hooks 型別與 query invalidation 被覆蓋
-  - Acceptance: WHEN APP 手動驗證完成 THEN 設定入口、TPASS 設定頁、卡片詳情頁與信用卡帳戶 TPASS 區塊的主要狀態都有驗證紀錄
+  - Acceptance: WHEN APP 手動驗證完成 THEN 設定入口、TPASS 設定頁、卡片詳情頁與信用卡帳戶 TPASS 區塊的主要狀態都有驗證紀錄，且信用卡帳戶 TPASS 區塊符合單張卡、上月/本月進度與回饋金額設計
   - Depends on: 5.1, 5.2, 5.3, 5.4, 5.5
   - Independence: serial
   - status: not_started

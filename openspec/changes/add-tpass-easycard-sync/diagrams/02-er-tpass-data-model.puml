@@ -99,11 +99,12 @@ users ||--o{ summaries : "擁有月摘要"
 users ||--o{ accounts : "擁有帳戶"
 
 cards ||--o{ summaries : "每卡每月多筆歷史摘要"
-accounts ||--o{ cards : "CREDIT 帳戶可關聯多張卡"
+accounts ||--o| cards : "CREDIT 帳戶最多綁定一張卡"
 
 note right of cards
   Unique:
   user_id + card_number_hash
+  linked_account_id where not null
 
   linked_account_id 必須為
   同使用者的 CREDIT account
