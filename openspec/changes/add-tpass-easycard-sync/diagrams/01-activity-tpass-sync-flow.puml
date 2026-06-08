@@ -30,17 +30,14 @@ endif
 
 :填入身分 ID、出生年月日;
 :載入圖形驗證碼;
-:嘗試 OCR 辨識 CAPTCHA;
+:使用 Tesseract OCR 辨識驗證碼;
+:必要時重新載入驗證碼並重試;
 
-if (CAPTCHA 可提交?) then (是)
+if (OCR 驗證碼流程成功?) then (是)
   :送出 applyfbs!query2.action;
 else (否)
-  if (APP 手動同步?) then (是)
-    :回傳 captcha_required;
-  else (否)
-    :排程記錄 captcha_required;
-  endif
   :sync_status = failed;
+  :記錄非預期同步錯誤;
   :保留既有卡片與月摘要資料;
   stop
 endif

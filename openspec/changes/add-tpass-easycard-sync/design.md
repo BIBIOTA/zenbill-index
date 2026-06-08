@@ -233,7 +233,7 @@ TPASS 卡片詳情頁：
 
 每日自動同步由 worker 執行，新增獨立設定，例如 `ZENBILL_WORKER_TPASS_SYNC_SCHEDULE`。預設排程為每天凌晨，且不與電子發票同步排程綁死。
 
-查詢入口有 6 碼圖形驗證碼與語音驗證碼。`pkg/tpass` 需明確支援 CAPTCHA 處理策略：優先評估復用現有 Tesseract OCR；若 OCR 無法穩定通過，手動同步回傳 `captcha_required`，每日自動同步記錄失敗但保留既有資料。
+查詢入口有 6 碼圖形驗證碼與語音驗證碼。`pkg/tpass` 需比照電子發票同步，透過既有 Tesseract OCR 自動辨識圖形驗證碼並提交查詢；手動同步與排程同步都不提供人工輸入驗證碼流程。若 OCR 多次辨識失敗、官方回應驗證碼錯誤或驗證碼 DOM 改版，視為非預期同步錯誤，更新 `sync_status = failed` 與 `sync_error`，並保留既有資料。
 
 `pkg/tpass` 需使用 typed DTO 封裝外部頁面資料。快照已確認可用 selector 與欄位包含：查詢表單 `#id`、`#year_field`、`#month_field`、`#date_field`、`#txtcaptcha`、`#apply_csrfToken`；卡號清單 `#t1`；單卡明細 `table.t`。若官方頁維護或 DOM 改版，scraper/parser 回傳明確錯誤，不應 panic。
 
@@ -242,7 +242,7 @@ TPASS 卡片詳情頁：
 - 未設定 credential：同步 API 回傳設定缺失錯誤。
 - credential 解密失敗：回傳伺服器錯誤並記錄 log，不回傳敏感內容。
 - 官方頁維護或連線失敗：同步狀態設為 failed，APP 顯示最後成功同步與失敗原因。
-- CAPTCHA 無法自動辨識：手動同步回傳 `captcha_required`，排程同步記錄失敗但保留資料。
+- OCR 驗證碼流程非預期失敗：同步狀態設為 failed，APP 顯示一般同步錯誤與最後成功同步時間，不要求使用者手動輸入驗證碼。
 - 身分證字號或出生年月日格式不合法：HTTP layer 回傳 400。
 - 卡片關聯帳戶不存在、非本人帳戶或非信用卡帳戶：回傳 400 或 404。
 - 同步期間重複觸發：回傳同步進行中，不啟動第二個同步。
@@ -306,7 +306,7 @@ Parser tests：
 ## 實作前確認項
 
 - 將已下載的 TPASS 快照 HTML 從 `tmp/tpass-snapshots/` 整理成 repo 內測試 fixture，並移除快照中非必要的個資。
-- 評估圖形驗證碼 OCR 可行性；若不可行，將手動 CAPTCHA 流程列為實作需求變更。
+- 復用電子發票同步的 Tesseract OCR 基礎設施，並針對 TPASS 驗證碼建立 retry 與失敗分類；本變更不設計人工驗證碼流程。
 - 確認官方正式頁是否仍使用 `applyfbs!query2.action` 查詢卡號清單、`applyfbs!queryResult.action` 查詢單卡明細。
 - 刪除 credential 時 APP 預設保留已同步資料；若未來需要刪除 TPASS 資料，應另設明確資料刪除 API 與二次確認。
 
@@ -319,5 +319,5 @@ Parser tests：
 
 ## Diagrams
 
-- [Activity: TPASS Sync Flow](./diagrams/01-activity-tpass-sync-flow.puml) — 描述 APP 手動同步與 worker 排程同步如何處理 credential、CAPTCHA、官方查詢、卡片與月摘要 upsert、錯誤狀態分流。
+- [Activity: TPASS Sync Flow](./diagrams/01-activity-tpass-sync-flow.puml) — 描述 APP 手動同步與 worker 排程同步如何處理 credential、OCR 驗證碼、官方查詢、卡片與月摘要 upsert、錯誤狀態分流。
 - [ER: TPASS Data Model](./diagrams/02-er-tpass-data-model.puml) — 描述 `users`、`accounts`、`tpass_credentials`、`tpass_cards`、`tpass_monthly_summaries` 的關係與唯一約束。

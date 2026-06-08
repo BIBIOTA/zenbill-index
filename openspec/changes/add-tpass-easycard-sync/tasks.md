@@ -41,9 +41,10 @@
   - Depends on: 2.2
   - Independence: serial
   - status: not_started
-- [ ] 2.4 定義 TPASS scraper 與 CAPTCHA 策略
+- [ ] 2.4 定義 TPASS scraper 與 OCR 驗證碼策略
   - Acceptance: WHEN scraper 開啟查詢頁 THEN 可填入 `#id`、`#year_field`、`#month_field`、`#date_field` 並處理 `#txtcaptcha`
-  - Acceptance: WHEN CAPTCHA OCR 不可用或辨識失敗 THEN scraper 回傳 `captcha_required` 類型錯誤供手動同步與排程同步分流
+  - Acceptance: WHEN scraper 遇到圖形驗證碼 THEN 比照電子發票同步使用 Tesseract OCR 自動辨識並重試，不要求使用者人工輸入驗證碼
+  - Acceptance: WHEN OCR 多次失敗、官方回應驗證碼錯誤或驗證碼 DOM 改版 THEN scraper 回傳非預期同步錯誤，usecase 保留既有資料並更新 sync status 與 sync error
   - Depends on: 2.2
   - Independence: serial
   - status: not_started
@@ -94,7 +95,7 @@
   - Acceptance: WHEN authenticated user 呼叫 `GET /tpass/status` THEN 回傳 TPASS 設定狀態且不含明文敏感資料
   - Acceptance: WHEN authenticated user 呼叫 `PUT /tpass/credentials` THEN 可設定或更新身分證字號與出生年月日
   - Acceptance: WHEN authenticated user 呼叫 `DELETE /tpass/credentials` THEN 只刪除加密查詢憑證並保留已同步資料
-  - Acceptance: WHEN authenticated user 呼叫 `POST /tpass/sync` THEN 觸發手動同步或回傳同步進行中/captcha_required 錯誤
+  - Acceptance: WHEN authenticated user 呼叫 `POST /tpass/sync` THEN 觸發手動同步或回傳同步進行中/非預期同步錯誤，不啟動人工驗證碼流程
   - Depends on: 3.4
   - Independence: serial
   - status: not_started
@@ -110,7 +111,7 @@
   - status: not_started
 - [ ] 4.3 新增 TPASS worker 排程設定
   - Acceptance: WHEN `ZENBILL_WORKER_TPASS_SYNC_SCHEDULE` 有設定 THEN worker 依該 cron schedule 同步所有 active TPASS credentials
-  - Acceptance: WHEN 排程同步遇到 CAPTCHA 或官方頁失敗 THEN worker 記錄錯誤、更新 credential sync status 並繼續處理其他使用者
+  - Acceptance: WHEN 排程同步遇到 OCR 驗證碼失敗或官方頁失敗 THEN worker 記錄非預期同步錯誤、更新 credential sync status 並繼續處理其他使用者
   - Depends on: 3.4
   - Independence: parallel-safe
   - status: not_started
