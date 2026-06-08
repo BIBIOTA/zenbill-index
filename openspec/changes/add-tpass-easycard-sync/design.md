@@ -310,7 +310,12 @@ Parser tests：
 
 ## Probable next steps
 
-此變更涉及後端 usecase、外部同步、APP 多頁面狀態與信用卡帳戶關聯，資料流與元件互動中等複雜。後續建議：
+此變更涉及後端 usecase、外部同步、APP 多頁面狀態與信用卡帳戶關聯，資料流與資料模型互動中等複雜。後續建議：
 
-- 需要 `spec-driven-dev:writing-uml`：可補 sequence diagram 描述手動同步、每日同步與信用卡詳情查詢流程。
+- 已選擇 `spec-driven-dev:writing-uml`：使用 activity diagram 描述 TPASS 同步流程，使用 ER diagram 描述 TPASS 資料模型。
 - 需要 `spec-driven-dev:writing-figma`：APP 設定列表、TPASS 設定頁、卡片詳情與信用卡 TPASS 區塊屬於新 UI，適合先建立低風險視覺設計。
+
+## Diagrams
+
+- [Activity: TPASS Sync Flow](./diagrams/01-activity-tpass-sync-flow.puml) — 描述 APP 手動同步與 worker 排程同步如何處理 credential、CAPTCHA、官方查詢、卡片與月摘要 upsert、錯誤狀態分流。
+- [ER: TPASS Data Model](./diagrams/02-er-tpass-data-model.puml) — 描述 `users`、`accounts`、`tpass_credentials`、`tpass_cards`、`tpass_monthly_summaries` 的關係與唯一約束。

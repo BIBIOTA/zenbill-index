@@ -1,0 +1,119 @@
+@startuml
+title TPASS 資料模型 ER 圖
+
+hide circle
+skinparam linetype ortho
+
+entity "users" as users {
+  * id : uuid
+  --
+  email : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "accounts" as accounts {
+  * id : uuid
+  --
+  user_id : uuid
+  name : varchar
+  type : varchar
+  currency : varchar
+  balance : decimal
+  created_at : timestamp
+}
+
+entity "tpass_credentials" as credentials {
+  * id : uuid
+  --
+  user_id : uuid <<unique>>
+  national_id_encrypted : text
+  birth_date_encrypted : text
+  national_id_masked : varchar
+  sync_status : varchar
+  sync_error : text
+  last_synced_at : timestamp?
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "tpass_cards" as cards {
+  * id : uuid
+  --
+  user_id : uuid
+  card_number_encrypted : text
+  card_number_hash : varchar
+  card_number_last4 : varchar
+  display_number : varchar
+  card_type : varchar
+  registration_status : varchar
+  registered_at : date?
+  early_bird_qualification : varchar
+  linked_account_id : uuid?
+  last_detail_synced_at : timestamp?
+  raw_data : jsonb
+  first_seen_at : timestamp
+  last_seen_at : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "tpass_monthly_summaries" as summaries {
+  * id : uuid
+  --
+  user_id : uuid
+  card_id : uuid
+  year : int
+  month : int
+  query_date : date
+  short_bus_count : int
+  short_bus_amount : decimal
+  short_bus_official_reward : decimal
+  intercity_bus_count : int
+  intercity_bus_amount : decimal
+  intercity_bus_official_reward : decimal
+  taipei_metro_count : int
+  taipei_metro_amount : decimal
+  taipei_metro_official_reward : decimal
+  tra_count : int
+  tra_amount : decimal
+  tra_official_reward : decimal
+  new_taipei_metro_count : int
+  new_taipei_metro_amount : decimal
+  new_taipei_metro_official_reward : decimal
+  rail_count : int
+  rail_amount : decimal
+  official_total_reward_amount : decimal
+  redeemed_at : date?
+  estimated_total_reward_amount : decimal
+  calculation_delta_amount : decimal
+  official_raw_data : jsonb
+  calculated_at : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+users ||--o| credentials : "每位使用者最多一筆 TPASS 設定"
+users ||--o{ cards : "擁有悠遊卡"
+users ||--o{ summaries : "擁有月摘要"
+users ||--o{ accounts : "擁有帳戶"
+
+cards ||--o{ summaries : "每卡每月多筆歷史摘要"
+accounts ||--o{ cards : "CREDIT 帳戶可關聯多張卡"
+
+note right of cards
+  Unique:
+  user_id + card_number_hash
+
+  linked_account_id 必須為
+  同使用者的 CREDIT account
+end note
+
+note bottom of summaries
+  Unique:
+  user_id + card_id + year + month
+
+  year 由 query_date 與月份推導
+end note
+
+@enduml

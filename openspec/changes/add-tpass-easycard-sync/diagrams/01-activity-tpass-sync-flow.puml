@@ -1,0 +1,94 @@
+@startuml
+title TPASS 同步流程
+
+start
+
+if (同步來源?) then (APP 手動同步)
+  :使用者點擊手動同步;
+  :API 檢查 JWT 與 TPASS 設定狀態;
+else (Worker 排程)
+  :Worker 依 TPASS cron 觸發;
+  :查詢 active TPASS credentials;
+endif
+
+if (同一使用者正在同步?) then (是)
+  :回傳或記錄「同步進行中」;
+  stop
+else (否)
+  :將 credential sync_status 設為 syncing;
+endif
+
+:解密身分證字號與出生年月日;
+
+if (解密成功?) then (是)
+  :開啟 TPASS 查詢頁;
+else (否)
+  :sync_status = failed;
+  :記錄敏感資訊以外的錯誤訊息;
+  stop
+endif
+
+:填入身分 ID、出生年月日;
+:載入圖形驗證碼;
+:嘗試 OCR 辨識 CAPTCHA;
+
+if (CAPTCHA 可提交?) then (是)
+  :送出 applyfbs!query2.action;
+else (否)
+  if (APP 手動同步?) then (是)
+    :回傳 captcha_required;
+  else (否)
+    :排程記錄 captcha_required;
+  endif
+  :sync_status = failed;
+  :保留既有卡片與月摘要資料;
+  stop
+endif
+
+if (取得卡號清單?) then (是)
+  :解析 #t1 卡號清單;
+else (否)
+  :sync_status = failed;
+  :記錄官方頁維護、DOM 改版或查詢失敗;
+  :保留既有資料;
+  stop
+endif
+
+if (卡片數量 <= 5 且有卡片?) then (是)
+  :逐張卡片處理;
+else (無卡片或超出合約)
+  :更新最後同步時間;
+  :sync_status = success 或 failed;
+  stop
+endif
+
+repeat
+  :設定 apply.cardNo;
+  :送出 applyfbs!queryResult.action;
+
+  if (取得單卡明細 table.t?) then (是)
+    :解析月份摘要列;
+    :依 query_date 推導 year;
+    :Upsert tpass_cards;
+    :Upsert tpass_monthly_summaries;
+    :依官方摘要重算預估回饋;
+    :保存 calculation_delta_amount;
+  else (否)
+    :記錄該卡明細解析錯誤;
+    :保留該卡既有摘要;
+  endif
+repeat while (仍有下一張卡?) is (是)
+
+:更新 credential last_synced_at;
+
+if (是否有任一卡片失敗?) then (是)
+  :sync_status = partial_failed;
+  :sync_error 保存摘要錯誤;
+else (否)
+  :sync_status = success;
+  :sync_error 清空;
+endif
+
+stop
+
+@enduml

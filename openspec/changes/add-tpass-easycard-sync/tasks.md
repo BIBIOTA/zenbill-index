@@ -171,5 +171,7 @@
   - status: not_started
 
 ## Optional artifacts
-- [x] PlantUML diagrams (spec-driven-dev:writing-uml) — required types: sequence, ER, component
+- [x] PlantUML diagrams:
+  - [01-activity-tpass-sync-flow.puml](./diagrams/01-activity-tpass-sync-flow.puml)
+  - [02-er-tpass-data-model.puml](./diagrams/02-er-tpass-data-model.puml)
 - [x] Figma designs (spec-driven-dev:writing-figma)
