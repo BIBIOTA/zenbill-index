@@ -392,3 +392,114 @@ export interface CurrencySetting {
 export interface UpdateCurrencySettingsInput {
   settings: CurrencySetting[]
 }
+
+// === TPASS EasyCard ===
+export type TpassSyncStatus =
+  | 'idle'
+  | 'syncing'
+  | 'success'
+  | 'failed'
+  | 'partial_failed'
+
+// GET /tpass/status. When no credentials are configured the backend returns
+// only `{ bound: false }`, so every field except `bound` is optional.
+export interface TpassCredentialStatus {
+  bound: boolean
+  national_id_masked?: string
+  last_synced_at?: string | null
+  sync_status?: TpassSyncStatus
+  sync_error?: string | null
+}
+
+// PUT /tpass/credentials body.
+export interface SetTpassCredentialsInput {
+  national_id: string
+  birth_date: string
+}
+
+// POST /tpass/sync result envelope data.
+export interface TpassSyncResult {
+  status: TpassSyncStatus
+  cards_upserted: number
+  summaries_upserted: number
+  failed_cards: number
+  errors: string[] | null
+}
+
+// One official monthly reward summary for a TPASS card.
+export interface TpassMonthlySummary {
+  id: string
+  user_id: string
+  card_id: string
+  year: number
+  month: number
+  query_date: string
+  short_bus_count: number
+  short_bus_amount: number
+  short_bus_official_reward: number
+  intercity_bus_count: number
+  intercity_bus_amount: number
+  intercity_bus_official_reward: number
+  taipei_metro_count: number
+  taipei_metro_amount: number
+  taipei_metro_official_reward: number
+  tra_count: number
+  tra_amount: number
+  tra_official_reward: number
+  new_taipei_metro_count: number
+  new_taipei_metro_amount: number
+  new_taipei_metro_official_reward: number
+  rail_count: number
+  rail_amount: number
+  official_total_reward_amount: number
+  redeemed_at?: string | null
+  estimated_total_reward_amount: number
+  calculation_delta_amount: number
+  official_raw_data?: unknown
+  calculated_at: string
+  created_at: string
+  updated_at: string
+}
+
+// List/account DTO for a TPASS card. Excludes the full card number; only the
+// masked display number and last 4 digits are exposed.
+export interface TpassCardListItem {
+  id: string
+  display_number: string
+  card_number_last4: string
+  card_type: string
+  registration_status: string
+  registered_at?: string | null
+  early_bird_qualification: string
+  linked_account_id?: string | null
+  last_detail_synced_at?: string | null
+  recent_summary?: TpassMonthlySummary
+}
+
+// Single-card detail DTO. Adds the decrypted full card number.
+export interface TpassCardDetail extends TpassCardListItem {
+  card_number: string
+}
+
+// PUT /tpass/cards/:id/linked-account body. Pass null to unlink.
+export interface LinkTpassCardAccountInput {
+  linked_account_id: string | null
+}
+
+// GET /tpass/summaries query filter (all optional).
+export interface TpassSummaryFilter {
+  card_id?: string
+  year?: number
+  month?: number
+}
+
+// GET /accounts/:id/tpass — credit-account TPASS section.
+export interface TpassAccountSection {
+  account_id: string
+  card?: TpassCardListItem
+  previous_month_summary?: TpassMonthlySummary
+  current_month_summary?: TpassMonthlySummary
+  remaining_ride_count_to_next_threshold: number
+  previous_month_reward_amount: number
+  current_month_estimated_reward_amount: number
+}
