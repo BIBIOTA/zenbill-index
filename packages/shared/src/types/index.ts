@@ -463,6 +463,12 @@ export interface TpassMonthlySummary {
 
 // List/account DTO for a TPASS card. Excludes the full card number; only the
 // masked display number and last 4 digits are exposed.
+// Backend-authoritative TPASS values (verbatim Chinese, see backend/pkg/tpass/parser.go).
+// registration_status is '已登錄' or '未登錄'; early_bird_qualification is '符合' or '' (empty).
+export const TPASS_REGISTERED = '已登錄'
+export const TPASS_NOT_REGISTERED = '未登錄'
+export const TPASS_EARLY_BIRD_QUALIFIED = '符合'
+
 export interface TpassCardListItem {
   id: string
   display_number: string
