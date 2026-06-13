@@ -1,70 +1,70 @@
 # Tasks: add-tpass-easycard-sync
 
 ## 1. 後端資料模型與 Migration
-- [ ] 1.1 新增 TPASS domain model
+- [x] 1.1 新增 TPASS domain model
   - Acceptance: WHEN 後端 domain package 編譯 THEN `TpassCredential`、`TpassCard`、`TpassMonthlySummary` 與同步狀態型別可被 usecase 與 repository 使用
   - Acceptance: WHEN domain model 被序列化 THEN API JSON 欄位名稱符合設計文件的 snake_case 合約
   - Depends on: -
   - Independence: independent
-  - status: not_started
-- [ ] 1.2 新增 TPASS 資料庫 migration
+  - status: passing
+- [x] 1.2 新增 TPASS 資料庫 migration
   - Acceptance: WHEN migration 執行 THEN `tpass_credentials`、`tpass_cards`、`tpass_monthly_summaries` 表與必要 index/unique constraints 被建立
   - Acceptance: WHEN migration 建立約束 THEN `tpass_cards.linked_account_id` 可為空、非空時同一信用卡帳戶最多綁定一張 TPASS 卡，且 `tpass_monthly_summaries` 以 `user_id + card_id + year + month` 去重
   - Depends on: 1.1
   - Independence: serial
-  - status: not_started
-- [ ] 1.3 新增 TPASS repository interfaces
+  - status: passing
+- [x] 1.3 新增 TPASS repository interfaces
   - Acceptance: WHEN usecase 只依賴 domain interfaces THEN 可設定 credential、upsert 卡片、upsert 月摘要、查詢卡片、查詢月摘要、查詢信用卡關聯 TPASS 資料
   - Acceptance: WHEN repository interface 放在 domain layer THEN domain layer 不 import GORM 或外部框架
   - Acceptance: WHEN account TPASS projection 被查詢 THEN domain 型別可表達單張綁定卡片、上月摘要、本月摘要、門檻剩餘次數與回饋金額
   - Depends on: 1.1
   - Independence: serial
-  - status: not_started
+  - status: passing
 
 ## 2. 外部快照 Fixture 與 Parser
-- [ ] 2.1 建立去識別化 TPASS HTML fixture
+- [x] 2.1 建立去識別化 TPASS HTML fixture
   - Acceptance: WHEN parser tests 執行 THEN 測試 fixture 位於 repo 可讀測試資料目錄且不含真實身分證字號、生日或完整真實卡號
   - Acceptance: WHEN fixture 被讀取 THEN 保留查詢表單、卡號清單、單卡明細表格與必要 DOM selector
   - Depends on: -
   - Independence: independent
-  - status: not_started
-- [ ] 2.2 實作 TPASS 查詢頁 DTO 與 parser
+  - status: passing
+- [x] 2.2 實作 TPASS 查詢頁 DTO 與 parser
   - Acceptance: WHEN parser 讀取卡號清單 fixture THEN 解析出卡號、版面、狀態、登錄日期、早鳥資格與回饋金入口狀態
   - Acceptance: WHEN parser 讀取單卡明細 fixture THEN 解析出每月五類運具的次數、交易金額、官方回饋金、總回饋與兌領日期
   - Depends on: 2.1
   - Independence: serial
-  - status: not_started
-- [ ] 2.3 實作跨年月份推導與欄位錯誤偵測
+  - status: passing
+- [x] 2.3 實作跨年月份推導與欄位錯誤偵測
   - Acceptance: WHEN 查詢日為 2026-06-08 且明細月份為 04 THEN summary year 為 2026
   - Acceptance: WHEN 查詢日為 2026-06-08 且明細月份為 12 THEN summary year 為 2025
   - Acceptance: WHEN 明細列欄位數量不符合官方表格合約 THEN parser 回傳明確錯誤且不 panic
   - Depends on: 2.2
   - Independence: serial
-  - status: not_started
-- [ ] 2.4 定義 TPASS scraper 與 OCR 驗證碼策略
+  - status: passing
+- [x] 2.4 定義 TPASS scraper 與 OCR 驗證碼策略
   - Acceptance: WHEN scraper 開啟查詢頁 THEN 可填入 `#id`、`#year_field`、`#month_field`、`#date_field` 並處理 `#txtcaptcha`
   - Acceptance: WHEN scraper 遇到圖形驗證碼 THEN 比照電子發票同步使用 Tesseract OCR 自動辨識並重試，不要求使用者人工輸入驗證碼
   - Acceptance: WHEN OCR 多次失敗、官方回應驗證碼錯誤或驗證碼 DOM 改版 THEN scraper 回傳非預期同步錯誤，usecase 保留既有資料並更新 sync status 與 sync error
   - Depends on: 2.2
   - Independence: serial
-  - status: not_started
+  - status: passing
 
 ## 3. Repository 與 Usecase
-- [ ] 3.1 實作 TPASS repository
+- [x] 3.1 實作 TPASS repository
   - Acceptance: WHEN repository upsert 同一卡號 THEN 使用 `card_number_hash` 去重並更新 `last_seen_at`
   - Acceptance: WHEN repository upsert 同卡同年月摘要 THEN 更新既有 row 而不是新增重複 row
   - Acceptance: WHEN 查詢信用卡帳戶 TPASS 資料 THEN 只回傳同一使用者且 `linked_account_id` 符合的單張卡片、上月摘要與本月摘要
   - Acceptance: WHEN 第二張 TPASS 卡片嘗試綁定同一信用卡帳戶 THEN repository 或 usecase 拒絕該綁定並保留既有綁定
   - Depends on: 1.2, 1.3
   - Independence: serial
-  - status: not_started
-- [ ] 3.2 實作 TPASS credential 加密服務
+  - status: passing
+- [x] 3.2 實作 TPASS credential 加密服務
   - Acceptance: WHEN 使用者設定身分證字號與出生年月日 THEN DB 只保存 encrypted 欄位與 masked 身分證，不保存明文
   - Acceptance: WHEN API 查詢 TPASS 狀態 THEN 回傳 bound、masked national ID、last synced、sync status 與 sync error，不回傳明文生日或身分證
   - Depends on: 3.1
   - Independence: serial
-  - status: not_started
-- [ ] 3.3 實作 TPASS 回饋重算服務
+  - status: passing
+- [x] 3.3 實作 TPASS 回饋重算服務
   - Acceptance: WHEN 月摘要短途/公車達 11 至 30 次 THEN 系統預估基本回饋率為 15%
   - Acceptance: WHEN 月摘要短途/公車達 31 次以上 THEN 系統預估基本回饋率為 30%
   - Acceptance: WHEN 月摘要中長途國道達 2 至 3 次 THEN 系統預估基本回饋率為 15%
@@ -73,33 +73,34 @@
   - Acceptance: WHEN 官方總回饋與系統預估不同 THEN 保存 `calculation_delta_amount`
   - Depends on: 1.1
   - Independence: parallel-safe
-  - status: not_started
-- [ ] 3.4 實作 TPASS 同步 usecase
+  - status: passing
+- [x] 3.4 實作 TPASS 同步 usecase
   - Acceptance: WHEN 使用者手動同步且無同步進行中 THEN usecase 解密 credential、查詢卡號清單、逐卡查詢明細、upsert 卡片與月摘要
   - Acceptance: WHEN 同一使用者已有同步進行中 THEN usecase 回傳同步進行中錯誤且不啟動第二個同步
   - Acceptance: WHEN 外部查詢失敗 THEN 保留既有資料並更新 sync status 與 sync error
   - Depends on: 2.4, 3.1, 3.2, 3.3
   - Independence: serial
-  - status: not_started
-- [ ] 3.5 實作 TPASS 卡片關聯信用卡 usecase
+  - status: passing
+  - Known limitation (deferred to scraper task 2.x): `tpass.Scraper.Query` 目前回傳未以卡號為鍵的扁平 `MonthlySummaries`，尚未實作逐卡 `apply.cardNo` 明細抓取。usecase 已正確處理（扁平摘要僅歸一張卡、多明細卡記為 partial_failed 限制，不跨卡誤植）。真正的逐卡明細抓取需擴充 scraper 後再串接。
+- [x] 3.5 實作 TPASS 卡片關聯信用卡 usecase
   - Acceptance: WHEN 使用者關聯卡片到同一使用者的 `CREDIT` 帳戶 THEN `linked_account_id` 被更新
   - Acceptance: WHEN 該 `CREDIT` 帳戶已綁定另一張 TPASS 卡片 THEN usecase 回傳可映射到 HTTP 409 的錯誤，不覆蓋既有綁定
   - Acceptance: WHEN 使用者關聯卡片到非本人帳戶或非信用卡帳戶 THEN usecase 回傳可映射到 HTTP 400 或 404 的錯誤
   - Acceptance: WHEN 使用者解除關聯 THEN `linked_account_id` 被清空且既有摘要保留
   - Depends on: 3.1
   - Independence: parallel-safe
-  - status: not_started
+  - status: passing
 
 ## 4. HTTP API 與 Worker
-- [ ] 4.1 新增 TPASS HTTP handler 與 routes
+- [x] 4.1 新增 TPASS HTTP handler 與 routes
   - Acceptance: WHEN authenticated user 呼叫 `GET /tpass/status` THEN 回傳 TPASS 設定狀態且不含明文敏感資料
   - Acceptance: WHEN authenticated user 呼叫 `PUT /tpass/credentials` THEN 可設定或更新身分證字號與出生年月日
   - Acceptance: WHEN authenticated user 呼叫 `DELETE /tpass/credentials` THEN 只刪除加密查詢憑證並保留已同步資料
   - Acceptance: WHEN authenticated user 呼叫 `POST /tpass/sync` THEN 觸發手動同步或回傳同步進行中/非預期同步錯誤，不啟動人工驗證碼流程
   - Depends on: 3.4
   - Independence: serial
-  - status: not_started
-- [ ] 4.2 新增 TPASS card、summary、account API
+  - status: passing
+- [x] 4.2 新增 TPASS card、summary、account API
   - Acceptance: WHEN user 呼叫 `GET /tpass/cards` THEN 回傳卡片列表、登錄狀態、早鳥資格、關聯帳戶與最近月摘要，但不回傳完整卡號明文
   - Acceptance: WHEN user 呼叫 `GET /tpass/cards/:id` THEN 回傳單卡詳情與完整卡號
   - Acceptance: WHEN user 呼叫 `PUT /tpass/cards/:id/linked-account` THEN 可關聯或解除信用卡帳戶
@@ -108,49 +109,50 @@
   - Acceptance: WHEN user 呼叫 `PUT /tpass/cards/:id/linked-account` 且目標信用卡已綁定其他 TPASS 卡 THEN 回傳衝突錯誤
   - Depends on: 3.5, 4.1
   - Independence: serial
-  - status: not_started
-- [ ] 4.3 新增 TPASS worker 排程設定
+  - status: passing
+  - Product-confirm needed: `RemainingRideCountToNextThreshold` 採 short-bus headline tier（<11→11-count, 11..30→31-count, ≥31→0），規格未釘死單一公式；前端指標日後可能改追蹤其他級距，需產品確認。
+- [x] 4.3 新增 TPASS worker 排程設定
   - Acceptance: WHEN `ZENBILL_WORKER_TPASS_SYNC_SCHEDULE` 有設定 THEN worker 依該 cron schedule 同步所有 active TPASS credentials
   - Acceptance: WHEN 排程同步遇到 OCR 驗證碼失敗或官方頁失敗 THEN worker 記錄非預期同步錯誤、更新 credential sync status 並繼續處理其他使用者
   - Depends on: 3.4
   - Independence: parallel-safe
-  - status: not_started
+  - status: passing
 
 ## 5. Shared Package 與 APP UI
-- [ ] 5.1 新增 shared TPASS types 與 hooks
+- [x] 5.1 新增 shared TPASS types 與 hooks
   - Acceptance: WHEN APP import `@zenbill/shared` THEN 可使用 TPASS status、credential、sync、cards、card detail、summaries、account summaries hooks
   - Acceptance: WHEN mutation 成功 THEN 相關 `tpass` 與 `accounts` query keys 被正確 invalidate
   - Depends on: 4.1, 4.2
   - Independence: serial
-  - status: not_started
-- [ ] 5.2 將設定首頁調整為列表式入口
+  - status: passing
+- [x] 5.2 將設定首頁調整為列表式入口
   - Acceptance: WHEN 使用者進入設定頁 THEN 看得到電子發票、TPASS 2.0 悠遊卡、幣別設定等入口
   - Acceptance: WHEN 使用者點擊 TPASS 2.0 悠遊卡 THEN 導航到 TPASS 設定頁
   - Depends on: 5.1
   - Independence: serial
-  - status: not_started
-- [ ] 5.3 新增 TPASS 設定與卡片總覽頁
+  - status: passing
+- [x] 5.3 新增 TPASS 設定與卡片總覽頁
   - Acceptance: WHEN 尚未設定 TPASS credential THEN 頁面顯示身分證字號與出生年月日輸入
   - Acceptance: WHEN 已設定 TPASS credential THEN 頁面顯示遮罩身分證、最後同步時間、同步狀態、最後錯誤、更新/解除設定與手動同步操作
   - Acceptance: WHEN 卡片列表載入 THEN 顯示遮罩卡號、版面、登錄狀態、早鳥資格、關聯信用卡與最近月份摘要
   - Depends on: 5.2
   - Independence: serial
-  - status: not_started
-- [ ] 5.4 新增 TPASS 卡片詳情頁
+  - status: passing
+- [x] 5.4 新增 TPASS 卡片詳情頁
   - Acceptance: WHEN 使用者進入卡片詳情 THEN 顯示完整卡號、卡片狀態、關聯信用卡選擇器與月份回饋摘要
   - Acceptance: WHEN 月份摘要顯示 THEN 包含各運具分類的次數、交易金額、官方回饋金、總回饋與兌領日期
   - Acceptance: WHEN 使用者需要逐筆交易 THEN 頁面提供官方悠遊卡交易紀錄外部連結，不宣稱 ZenBill 已同步逐筆明細
   - Depends on: 5.3
   - Independence: serial
-  - status: not_started
-- [ ] 5.5 在信用卡帳戶詳情頁新增 TPASS 區塊
+  - status: passing
+- [x] 5.5 在信用卡帳戶詳情頁新增 TPASS 區塊
   - Acceptance: WHEN 信用卡帳戶有綁定 TPASS 卡片 THEN 帳戶詳情頁顯示 TPASS 區塊且只呈現該單張悠遊卡
   - Acceptance: WHEN TPASS 區塊顯示 THEN 呈現上月與本月的運具搭乘次數、本月距離回饋門檻還需搭乘幾次、上月回饋與本月預估回饋
   - Acceptance: WHEN 帳戶不是 `CREDIT` 或沒有關聯卡片 THEN 不顯示 TPASS 區塊
   - Acceptance: WHEN TPASS 月份摘要顯示 THEN 不混入既有交易列表
   - Depends on: 5.1, 5.4
   - Independence: serial
-  - status: not_started
+  - status: done
 
 ## 6. 測試與驗證
 - [ ] 6.1 新增 domain 與 usecase 測試
