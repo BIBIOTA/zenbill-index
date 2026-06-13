@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import { tpassKeys } from '../useTpass'
+import { tpassKeys, tpassInvalidators } from '../useTpass'
 import * as shared from '../../index'
 
 describe('tpass query key factory', () => {
@@ -49,40 +49,23 @@ describe('tpass hooks are exported from the package entrypoint', () => {
 /**
  * Query-invalidation coverage (task 6.4, deferred from 5.1).
  *
- * Approach: FALLBACK (no renderHook). The @zenbill/shared package has no DOM
- * test infrastructure — there is no react-dom dependency, no jsdom/happy-dom,
- * and no @testing-library/react in the package's devDependencies (which are
- * deliberately minimal: only vitest + typescript). Adding a full React DOM
- * renderer + a DOM vitest environment to this leaf package solely to mount
- * mutation hooks would be disproportionate, so instead we assert invalidation
- * against a REAL @tanstack/react-query QueryClient:
+ * Approach: NO renderHook. The @zenbill/shared package has no DOM test
+ * infrastructure — no react-dom, no jsdom/happy-dom, no @testing-library/react
+ * in the package's (deliberately minimal) devDependencies. Adding a full React
+ * DOM renderer just to mount mutation hooks would be disproportionate.
  *
- *   1. We declare the COMPLETE invalidation key set each TPASS mutation fires
- *      (mapping mutation -> exact keys, mirroring useTpass.ts onSuccess bodies).
- *   2. We replay those keys through a real QueryClient.invalidateQueries while
- *      spying on it, so the assertions are tied to real react-query behaviour
- *      rather than a hand-rolled stub.
- *   3. We additionally seed real queries into the cache and assert that the
- *      ["tpass"] (sync) and ["accounts"] invalidations actually MATCH the
- *      relevant cached queries via react-query's real prefix matching — proving
- *      the chosen keys cover the queries they are meant to refresh.
+ * Instead, each mutation's onSuccess body is extracted into an EXPORTED
+ * `tpassInvalidators.*` helper that the hook itself calls. These tests invoke
+ * the SAME helper against a spied real @tanstack/react-query QueryClient, so a
+ * drift in any invalidation key fails here AND changes the hook's behaviour —
+ * no duplicated contract table that can silently fall out of sync.
  *
- * The full key set per mutation (must stay in sync with useTpass.ts):
- *   useSetTpassCredentials   -> [ ['tpass','status'] ]
- *   useDeleteTpassCredentials-> [ ['tpass','status'], ['tpass','cards'] ]
- *   useSyncTpass             -> [ ['tpass'], ['accounts'] ]
- *   useLinkTpassCardAccount  -> [ ['tpass','cards'], ['tpass','card',<id>], ['accounts'] ]
+ * We additionally seed real queries into the cache and assert the ["tpass"]
+ * (sync) and ["accounts"] invalidations actually MATCH the relevant cached
+ * queries via react-query's real prefix matching.
  */
 describe('tpass mutation query invalidation', () => {
   const linkedCardId = 'card-123'
-
-  // The exact invalidation key set fired by each mutation's onSuccess.
-  const invalidationContract = {
-    useSetTpassCredentials: [tpassKeys.status()],
-    useDeleteTpassCredentials: [tpassKeys.status(), tpassKeys.cards()],
-    useSyncTpass: [tpassKeys.all, ['accounts']],
-    useLinkTpassCardAccount: [tpassKeys.cards(), tpassKeys.card(linkedCardId), ['accounts']],
-  } as const
 
   let qc: QueryClient
   let spy: ReturnType<typeof vi.spyOn>
@@ -92,32 +75,28 @@ describe('tpass mutation query invalidation', () => {
     spy = vi.spyOn(qc, 'invalidateQueries')
   })
 
-  function replay(keys: readonly (readonly unknown[])[]) {
-    for (const queryKey of keys) qc.invalidateQueries({ queryKey })
-  }
-
-  it('useSetTpassCredentials invalidates only the status query', () => {
-    replay(invalidationContract.useSetTpassCredentials)
+  it('setCredentials invalidates only the status query', () => {
+    tpassInvalidators.setCredentials(qc)
     expect(spy).toHaveBeenCalledTimes(1)
     expect(spy).toHaveBeenCalledWith({ queryKey: ['tpass', 'status'] })
   })
 
-  it('useDeleteTpassCredentials invalidates status + cards', () => {
-    replay(invalidationContract.useDeleteTpassCredentials)
+  it('deleteCredentials invalidates status + cards', () => {
+    tpassInvalidators.deleteCredentials(qc)
     expect(spy).toHaveBeenCalledTimes(2)
     expect(spy).toHaveBeenNthCalledWith(1, { queryKey: ['tpass', 'status'] })
     expect(spy).toHaveBeenNthCalledWith(2, { queryKey: ['tpass', 'cards'] })
   })
 
-  it('useSyncTpass invalidates the whole tpass tree + accounts', () => {
-    replay(invalidationContract.useSyncTpass)
+  it('sync invalidates the whole tpass tree + accounts', () => {
+    tpassInvalidators.sync(qc)
     expect(spy).toHaveBeenCalledTimes(2)
     expect(spy).toHaveBeenNthCalledWith(1, { queryKey: ['tpass'] })
     expect(spy).toHaveBeenNthCalledWith(2, { queryKey: ['accounts'] })
   })
 
-  it('useLinkTpassCardAccount invalidates cards + that card detail + accounts', () => {
-    replay(invalidationContract.useLinkTpassCardAccount)
+  it('linkAccount invalidates cards + that card detail + accounts', () => {
+    tpassInvalidators.linkAccount(qc, linkedCardId)
     expect(spy).toHaveBeenCalledTimes(3)
     expect(spy).toHaveBeenNthCalledWith(1, { queryKey: ['tpass', 'cards'] })
     expect(spy).toHaveBeenNthCalledWith(2, { queryKey: ['tpass', 'card', linkedCardId] })

@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type {
   ApiResponse,
@@ -23,6 +28,27 @@ export const tpassKeys = {
   summaries: (filter: TpassSummaryFilter) => ['tpass', 'summaries', filter] as const,
 }
 
+// Mutation invalidation helpers. Each mutation's onSuccess body lives here so
+// both the hook AND its tests exercise the exact same invalidation code path —
+// a drift in any key fails the corresponding test. Keys must match tpassKeys.
+export const tpassInvalidators = {
+  setCredentials: (qc: QueryClient) =>
+    qc.invalidateQueries({ queryKey: tpassKeys.status() }),
+  deleteCredentials: (qc: QueryClient) => {
+    qc.invalidateQueries({ queryKey: tpassKeys.status() })
+    qc.invalidateQueries({ queryKey: tpassKeys.cards() })
+  },
+  sync: (qc: QueryClient) => {
+    qc.invalidateQueries({ queryKey: tpassKeys.all })
+    qc.invalidateQueries({ queryKey: ['accounts'] })
+  },
+  linkAccount: (qc: QueryClient, cardId: string) => {
+    qc.invalidateQueries({ queryKey: tpassKeys.cards() })
+    qc.invalidateQueries({ queryKey: tpassKeys.card(cardId) })
+    qc.invalidateQueries({ queryKey: ['accounts'] })
+  },
+}
+
 // GET /tpass/status. Polls while a sync is in progress (mirrors useSyncStatus).
 export function useTpassStatus() {
   const api = getApiClient()
@@ -44,7 +70,7 @@ export function useSetTpassCredentials() {
   return useMutation({
     mutationFn: (input: SetTpassCredentialsInput) =>
       api.put<ApiResponse<null>>('/tpass/credentials', input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: tpassKeys.status() }),
+    onSuccess: () => tpassInvalidators.setCredentials(qc),
   })
 }
 
@@ -54,10 +80,7 @@ export function useDeleteTpassCredentials() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => api.delete<ApiResponse<null>>('/tpass/credentials'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tpassKeys.status() })
-      qc.invalidateQueries({ queryKey: tpassKeys.cards() })
-    },
+    onSuccess: () => tpassInvalidators.deleteCredentials(qc),
   })
 }
 
@@ -68,10 +91,7 @@ export function useSyncTpass() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => api.post<ApiResponse<TpassSyncResult>>('/tpass/sync', {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tpassKeys.all })
-      qc.invalidateQueries({ queryKey: ['accounts'] })
-    },
+    onSuccess: () => tpassInvalidators.sync(qc),
   })
 }
 
@@ -105,11 +125,7 @@ export function useLinkTpassCardAccount() {
   return useMutation({
     mutationFn: ({ id, linked_account_id }: { id: string } & LinkTpassCardAccountInput) =>
       api.put<ApiResponse<null>>(`/tpass/cards/${id}/linked-account`, { linked_account_id }),
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: tpassKeys.cards() })
-      qc.invalidateQueries({ queryKey: tpassKeys.card(variables.id) })
-      qc.invalidateQueries({ queryKey: ['accounts'] })
-    },
+    onSuccess: (_data, variables) => tpassInvalidators.linkAccount(qc, variables.id),
   })
 }
 
