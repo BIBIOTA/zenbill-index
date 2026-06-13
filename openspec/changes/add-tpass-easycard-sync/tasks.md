@@ -152,31 +152,38 @@
   - Acceptance: WHEN TPASS 月份摘要顯示 THEN 不混入既有交易列表
   - Depends on: 5.1, 5.4
   - Independence: serial
-  - status: done
+  - status: passing
+  - Design-polish (defer to verification Figma-conformance): frame 5:117 的門檻進度條尚未渲染（目前以逐列 hint + 文案表達），且 remaining=0 時「差 0 次」措辭可改為「已達標」。雙 reviewer 判為非阻塞。
 
 ## 6. 測試與驗證
-- [ ] 6.1 新增 domain 與 usecase 測試
+- [x] 6.1 新增 domain 與 usecase 測試
   - Acceptance: WHEN `go test ./internal/domain/... ./internal/usecase/...` 執行 THEN TPASS 回饋級距、跨年月份推導、credential 加密、同步錯誤、並發同步、信用卡關聯規則皆被覆蓋
   - Depends on: 3.2, 3.3, 3.4, 3.5
   - Independence: serial
-  - status: not_started
-- [ ] 6.2 新增 repository 與 HTTP 測試
+  - status: passing
+  - Note: 覆蓋稽核任務，無新 code；6 項驗收皆由 3.2–3.5 既有測試覆蓋（跨年推導屬 pkg/tpass→6.3）。既有無關失敗 TestSharedExpenseService_Delete_WithExpenseTransaction 非本變更引入。
+- [x] 6.2 新增 repository 與 HTTP 測試
   - Acceptance: WHEN repository tests 執行 THEN card hash 去重、月摘要 upsert、信用卡單張綁定約束與帳戶 TPASS projection 查詢皆被覆蓋
   - Acceptance: WHEN handler tests 執行 THEN TPASS protected routes 的成功、未授權、錯誤碼與完整卡號回傳邊界皆被覆蓋
   - Depends on: 4.1, 4.2
   - Independence: serial
-  - status: not_started
-- [ ] 6.3 新增 parser fixture 測試
+  - status: passing
+  - Note: 覆蓋稽核任務，無新 code；repo 覆蓋（3.1）+ handler 成功/錯誤碼/完整卡號邊界（4.1/4.2）皆已覆蓋。未授權(401)由中央 JWTAuth middleware 測試覆蓋（TPASS routes 註冊於 protected group），per-route 401 冗餘。
+- [x] 6.3 新增 parser fixture 測試
   - Acceptance: WHEN parser tests 執行 THEN 卡號清單、單卡月份摘要、官方總回饋、兌領日期與跨年年份推導都從去識別化 fixture 驗證
   - Depends on: 2.1, 2.2, 2.3
   - Independence: serial
-  - status: not_started
-- [ ] 6.4 新增 APP/shared 測試與手動驗證紀錄
+  - status: passing
+  - Note: 覆蓋稽核任務，無新 code；卡號清單/月摘要/官方總回饋(59,185)/兌領日期(""/02/22)/跨年推導(2026 vs 2025)皆從 testdata fixtures 驗證；fixture_test.go 嚴格守門去識別化。
+- [x] 6.4 新增 APP/shared 測試與手動驗證紀錄
   - Acceptance: WHEN shared/package tests 執行 THEN TPASS hooks 型別與 query invalidation 被覆蓋
   - Acceptance: WHEN APP 手動驗證完成 THEN 設定入口、TPASS 設定頁、卡片詳情頁與信用卡帳戶 TPASS 區塊的主要狀態都有驗證紀錄，且信用卡帳戶 TPASS 區塊符合單張卡、上月/本月進度與回饋金額設計
   - Depends on: 5.1, 5.2, 5.3, 5.4, 5.5
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - PART 1（shared 測試）：強化 `packages/shared/src/hooks/__tests__/useTpass.test.ts`，新增 mutation→invalidation key 集合斷言 + 真實 QueryClient prefix-match 覆蓋（採 FALLBACK 取向，原因見測試檔註解：套件無 DOM 測試基礎建設，加 renderHook 不成比例）。typecheck + test 全綠（檔內 10 tests / 全套件 37 tests）。
+  - PART 2（手動驗證紀錄）：[manual-verification.md](./manual-verification.md)，逐 frame（5:2 / 5:138 / 5:25 / 5:153 / 5:164 / 5:65 / 5:117 / 5:175 / 5:187）對照 web+app file:line，第二驗收條件（單張卡/上月本月進度/回饋金額）已 code-level 確認；live runtime 簽核標記 PENDING USER。
+  - Deferral 紀錄：已轉載 5.5 進度條未渲染、「差 0 次」措辭、4.2 公式待產品確認、2.x scraper 逐卡明細限制；另記 5:175/5:187 以狀態組合+路由守衛涵蓋而非獨立畫面（partial，待產品確認）。
 
 ## Optional artifacts
 - [x] PlantUML diagrams:
