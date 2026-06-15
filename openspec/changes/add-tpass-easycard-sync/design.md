@@ -307,7 +307,12 @@ Parser tests：
 
 - 將已下載的 TPASS 快照 HTML 從 `tmp/tpass-snapshots/` 整理成 repo 內測試 fixture，並移除快照中非必要的個資。
 - 復用電子發票同步的 Tesseract OCR 基礎設施，並針對 TPASS 驗證碼建立 retry 與失敗分類；本變更不設計人工驗證碼流程。
-- 確認官方正式頁是否仍使用 `applyfbs!query2.action` 查詢卡號清單、`applyfbs!queryResult.action` 查詢單卡明細。
+- ✅（2026-06-14 已確認真實流程）官方查詢的正確 URL 流程為：
+  1. 進入頁 `applyfbs.action`（活動說明 + 「我要申請」`#btnGo`）。
+  2. 點 `#btnGo` → POST `applyfbs!agree.action` → 顯示查詢表單（`#id`/`#year_field`/`#month_field`/`#date_field`/`#txtcaptcha`，送出鈕 `#btnG`）。
+  3. 填表+驗證碼 → POST `applyfbs!query.action` → 卡號清單 `#t1`。
+  4. 每張卡設 `apply.cardNo`(`#applyCardNo`) → POST `applyfbs!query2.action` → 單卡明細 `table.t`。
+  ⚠️ 直接 GET `applyfbs!query.action` 會被官方回 199 bytes「系統維護中」殘根頁（伺服器以 Sec-Fetch-* 判斷站內流程），故 scraper 必須從 `applyfbs.action` 起步並走完同意條款。不存在 `applyfbs!queryResult.action`，單卡明細是 `query2`。
 - 刪除 credential 時 APP 預設保留已同步資料；若未來需要刪除 TPASS 資料，應另設明確資料刪除 API 與二次確認。
 
 ## Probable next steps
