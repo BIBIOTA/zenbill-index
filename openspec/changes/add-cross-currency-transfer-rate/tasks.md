@@ -91,11 +91,12 @@
   - Independence: serial
   - status: passing
   - note: shared dc3fb73; 13 shared tests pass (incl. re-edit scenario); tsc clean. Forms already call the function unchanged (signature preserved).
-- [ ] 5.3 重跑 manual smoke 驗收（APP emulator）
+- [x] 5.3 重跑 manual smoke 驗收（APP emulator）
   - Acceptance: WHEN 在 emulator 重現「中國信託(TWD)→王道美金(USD)、預填匯率、只填轉出 1000」THEN 轉入金額自動顯示非 0 並可正確送出/餘額正確
-  - Depends on: 5.2
+  - Depends on: 5.2, 5.4
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: emulator-5554 verified — 轉入金額 auto-computed 31.6 (was 0.03); submitted: 中國信託 -1041→-2041 (−1000 TWD), 王道美金 1937.54→1969.14 (+31.6 USD). Edit view reloaded cross-currency fields correctly. Test txn deleted; balances restored to baseline (-1041 / 1937.54).
 
 ## Optional artifacts
 - [ ] PlantUML diagrams (spec-driven-dev:writing-uml)

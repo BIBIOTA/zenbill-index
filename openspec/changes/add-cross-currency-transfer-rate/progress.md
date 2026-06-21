@@ -130,3 +130,14 @@
   - Commits: red (re-editing recomputes); dc3fb73 feat: green - rate-anchored edited-field model fixes per-keystroke freeze
   - Tests: crossCurrency.test.ts — 13 passed (incl. re-edit + all backward-compat); tsc clean. Removed unused ALL_FIELDS.
 - Next action: Resume task 5.3 — reload app on emulator (Metro hot-reload) and re-run the prefilled-rate + source-only smoke; target must show ~31.6 and submit/balance correct.
+
+## Session 16 — 2026-06-21 17:35
+- Stage: TDD
+- Task: 5.3 re-run manual smoke (APP emulator)
+- Transition: in_progress → passing
+- Evidence:
+  - emulator-5554, fresh bundle (5.4 fix). 中國信託(TWD)→王道美金(USD), prefilled rate 31.6456, entered only 轉出 1000 → 轉入金額 auto-computed 31.6 (previously froze at 0.03).
+  - Submitted: 中國信託 -1041→-2041 (−1000 TWD), 王道美金 1937.54→1969.14 (+31.6 USD). Target credited in target currency, not the source number.
+  - Edit view reloaded original_amount=31.6, exchange_rate=31.6456 correctly.
+  - Cleanup: deleted the test transaction; balances restored to baseline (中國信託 -1041, 王道美金 1937.54). Did not touch the user's pre-existing -1041 transfer.
+- Next action: Invoke verification-before-completion to write a fresh report superseding the prior one.
