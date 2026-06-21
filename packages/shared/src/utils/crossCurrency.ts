@@ -67,3 +67,62 @@ export function computeCrossCurrencyAmount(input: CrossCurrencyInput): CrossCurr
 
   return { source, target, rate }
 }
+
+/**
+ * Returns true when a transaction is a TRANSFER between two accounts whose
+ * currencies differ, i.e. it needs manual exchange-rate conversion.
+ */
+export function isCrossCurrencyTransfer(
+  type: string,
+  sourceCurrency: string | undefined,
+  targetCurrency: string | undefined,
+): boolean {
+  return (
+    type === 'TRANSFER' &&
+    !!sourceCurrency &&
+    !!targetCurrency &&
+    sourceCurrency !== targetCurrency
+  )
+}
+
+export interface TransferPayloadInput {
+  isCrossCurrency: boolean
+  sourceAmount: number
+  targetAmount: number
+  rate: number
+  targetCurrency: string
+  sourceMultiplier: number
+  targetMultiplier: number
+}
+
+export interface TransferPayloadFields {
+  amount: number
+  original_amount: number | undefined
+  original_currency: string | undefined
+  exchange_rate: number | undefined
+}
+
+/**
+ * Assembles the transfer transaction payload fields, applying the per-currency
+ * display multipliers. For cross-currency transfers the target-currency amount
+ * and rate are emitted; otherwise the cross-currency fields are left undefined.
+ */
+export function buildTransferPayloadFields(input: TransferPayloadInput): TransferPayloadFields {
+  const amount = input.sourceAmount * input.sourceMultiplier
+
+  if (!input.isCrossCurrency) {
+    return {
+      amount,
+      original_amount: undefined,
+      original_currency: undefined,
+      exchange_rate: undefined,
+    }
+  }
+
+  return {
+    amount,
+    original_amount: input.targetAmount * input.targetMultiplier,
+    original_currency: input.targetCurrency,
+    exchange_rate: input.rate,
+  }
+}
