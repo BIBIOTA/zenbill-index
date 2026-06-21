@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { computeCrossCurrencyAmount } from '../crossCurrency'
+import {
+  computeCrossCurrencyAmount,
+  isCrossCurrencyTransfer,
+  buildTransferPayloadFields,
+} from '../crossCurrency'
 
 describe('computeCrossCurrencyAmount', () => {
   it('Derive target amount from source and rate', () => {
@@ -71,5 +75,70 @@ describe('computeCrossCurrencyAmount', () => {
       lastEdited: ['source', 'rate'],
     })
     expect(zeroRate).toEqual({ source: 100, target: 0, rate: 0 })
+  })
+})
+
+describe('isCrossCurrencyTransfer', () => {
+  it('Detect cross-currency transfer', () => {
+    expect(isCrossCurrencyTransfer('TRANSFER', 'USD', 'TWD')).toBe(true)
+  })
+
+  it('Same-currency transfer keeps the single-amount flow', () => {
+    expect(isCrossCurrencyTransfer('TRANSFER', 'TWD', 'TWD')).toBe(false)
+    expect(isCrossCurrencyTransfer('EXPENSE', 'USD', 'TWD')).toBe(false)
+    // missing target currency (no target account selected yet)
+    expect(isCrossCurrencyTransfer('TRANSFER', 'USD', undefined)).toBe(false)
+  })
+})
+
+describe('buildTransferPayloadFields', () => {
+  it('Submit a cross-currency transfer payload', () => {
+    const fields = buildTransferPayloadFields({
+      isCrossCurrency: true,
+      sourceAmount: 100,
+      targetAmount: 3150,
+      rate: 0.0317,
+      targetCurrency: 'TWD',
+      sourceMultiplier: 1,
+      targetMultiplier: 1,
+    })
+    expect(fields).toEqual({
+      amount: 100,
+      original_amount: 3150,
+      original_currency: 'TWD',
+      exchange_rate: 0.0317,
+    })
+  })
+
+  it('applies source and target multipliers to the amounts', () => {
+    const fields = buildTransferPayloadFields({
+      isCrossCurrency: true,
+      sourceAmount: 5,
+      targetAmount: 3,
+      rate: 1.5,
+      targetCurrency: 'JPY',
+      sourceMultiplier: 10000,
+      targetMultiplier: 1000,
+    })
+    expect(fields.amount).toBe(50000)
+    expect(fields.original_amount).toBe(3000)
+  })
+
+  it('Omit cross-currency fields for non-cross-currency transactions', () => {
+    const fields = buildTransferPayloadFields({
+      isCrossCurrency: false,
+      sourceAmount: 100,
+      targetAmount: 0,
+      rate: 0,
+      targetCurrency: 'TWD',
+      sourceMultiplier: 1,
+      targetMultiplier: 1,
+    })
+    expect(fields).toEqual({
+      amount: 100,
+      original_amount: undefined,
+      original_currency: undefined,
+      exchange_rate: undefined,
+    })
   })
 })
