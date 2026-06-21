@@ -63,3 +63,12 @@
   - Tests: app/ TransactionForm.tsx has no own type errors (tsc); shared helpers TDD-covered (52 passed). The shared/index.ts `.ts`-extension tsc warnings are a pre-existing app-tsconfig quirk affecting all exports, not introduced here.
   - Decision: 3.1/3.2 are pure-UI wiring over already-TDD'd shared helpers; no new red/green possible without FE component infra (per user). Detection/auto-compute/prefill/payload all delegate to shared (tested); UI behavior verification-pending: manual smoke.
 - Next action: Run task 4.1 cross-platform consistency check, then invoke verification-before-completion.
+
+## Session 8 — 2026-06-21 01:20
+- Stage: TDD
+- Task: 4.1 兩端元件測試與跨平台同步驗證
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: (verification task — no production code change)
+  - Tests: shared suite 52 passed; grep confirms Web & APP forms reference the same 5 shared helpers (computeCrossCurrencyAmount x3, isCrossCurrencyTransfer x2, buildTransferPayloadFields x2, shouldPrefillRate x2, useExchangeRate x2) with identical counts; no leftover inline compute math in either form.
+- Next action: Invoke verification-before-completion; Web/APP component behavior remains verification-pending: manual smoke.

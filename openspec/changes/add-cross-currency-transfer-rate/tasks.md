@@ -58,12 +58,13 @@
   - note: payload assembly via shared buildTransferPayloadFields (TDD-covered); prefill wiring verification-pending: manual smoke
 
 ## 4. 驗證與收尾
-- [ ] 4.1 兩端元件測試與跨平台同步驗證
+- [x] 4.1 兩端元件測試與跨平台同步驗證
   - Acceptance: WHEN 執行 Web 與 APP 測試 THEN 涵蓋跨幣別偵測、預填只覆寫一次、payload 與 multiplier 套用正確，全部通過
   - Acceptance: WHEN 檢視變更 THEN APP 與 Web 行為一致且共享邏輯集中於 `packages/shared/`（符合 CLAUDE 跨平台同步規範）
   - Depends on: 2.2, 3.2
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: both forms reference the same 5 shared helpers with identical counts; no inline compute remains; shared suite 52 passed. Web/APP component-level behavior verification-pending: manual smoke.
 
 ## Optional artifacts
 - [ ] PlantUML diagrams (spec-driven-dev:writing-uml)
