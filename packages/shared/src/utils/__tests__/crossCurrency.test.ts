@@ -72,6 +72,19 @@ describe('computeCrossCurrencyAmount', () => {
     expect(result.rate).toBe(31.6456)
   })
 
+  it('Re-editing an amount recomputes the other from the rate', () => {
+    // target already holds a stale value (e.g. from an earlier keystroke);
+    // editing source again must recompute target from the rate, not freeze.
+    const result = computeCrossCurrencyAmount({
+      source: 1000,
+      target: 0.03, // stale from a prior source=1 keystroke
+      rate: 31.6456,
+      lastEdited: ['source'],
+    })
+    expect(result.target).toBeCloseTo(31.6, 1)
+    expect(result.source).toBe(1000)
+  })
+
   it('Guard against invalid or insufficient input', () => {
     // fewer than two fields edited → unchanged
     const single = computeCrossCurrencyAmount({
