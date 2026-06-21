@@ -83,6 +83,14 @@
   - Independence: serial
   - status: passing
   - note: UI wiring over tested shared fn (5.1); behavior verified via 5.3 manual smoke. Web frontend 34e2b3f, app 6fc1bb4; both typecheck clean.
+- [x] 5.4 改為「以匯率為錨」的編輯欄位驅動模型（修正逐字元凍結）
+  - Acceptance: WHEN 來源金額為最近編輯欄、匯率 > 0、且轉入金額已有舊值 THEN 以 `source / rate` 重算轉入金額並覆寫舊值
+  - Acceptance: WHEN 匯率為最近編輯欄 THEN 以已填金額重算另一金額；WHEN 無可用匯率但 source/target 皆有值 THEN 反推匯率
+  - Acceptance: WHEN 既有 1.x/5.1 測試重跑 THEN 全數仍通過
+  - Depends on: 5.1
+  - Independence: serial
+  - status: passing
+  - note: shared dc3fb73; 13 shared tests pass (incl. re-edit scenario); tsc clean. Forms already call the function unchanged (signature preserved).
 - [ ] 5.3 重跑 manual smoke 驗收（APP emulator）
   - Acceptance: WHEN 在 emulator 重現「中國信託(TWD)→王道美金(USD)、預填匯率、只填轉出 1000」THEN 轉入金額自動顯示非 0 並可正確送出/餘額正確
   - Depends on: 5.2

@@ -114,3 +114,19 @@
   - Commits: frontend 34e2b3f feat: drive cross-currency auto-compute via shared fn (remove early-return); app 6fc1bb4 feat: prefilled rate computes amount on single edit (diff-based apply)
   - Tests: frontend `tsc -b` exit 0; app form file no own type errors. Behavior to be confirmed by 5.3 manual smoke.
 - Next action: Start task 5.3 — reload app on emulator and re-run the prefilled-rate + source-only smoke (target must auto-compute non-zero).
+
+## Session 14 — 2026-06-21 17:30
+- Stage: TDD
+- Task: 5.4 rate-anchored edited-field model (fix per-keystroke freeze)
+- Transition: not_started → in_progress
+- Evidence: 5.3 manual smoke (interim) showed 轉入金額=0.03 instead of ~31.6 — the single-empty-field rule freezes after the first keystroke computes target (target then non-empty, tie-break needs 2 edits). Spec refined to rate-anchored edited-field model; openspec validate passed.
+- Next action: Write failing test "Re-editing an amount recomputes the other from the rate", then rewrite computeCrossCurrencyAmount to anchor on rate by the last-edited field.
+
+## Session 15 — 2026-06-21 17:32
+- Stage: TDD
+- Task: 5.4 rate-anchored edited-field model
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: red (re-editing recomputes); dc3fb73 feat: green - rate-anchored edited-field model fixes per-keystroke freeze
+  - Tests: crossCurrency.test.ts — 13 passed (incl. re-edit + all backward-compat); tsc clean. Removed unused ALL_FIELDS.
+- Next action: Resume task 5.3 — reload app on emulator (Metro hot-reload) and re-run the prefilled-rate + source-only smoke; target must show ~31.6 and submit/balance correct.

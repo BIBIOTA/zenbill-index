@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: System shall provide a shared cross-currency conversion function
-The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that derives the missing one of {source amount, target amount, exchange rate} from the other two, used by both the Web and APP transfer forms. When exactly one field is empty (≤ 0) and the other two are greater than zero, the function SHALL compute the empty field regardless of how many fields were explicitly edited — so an auto-prefilled rate counts as a usable operand. When all three fields are greater than zero, the function SHALL use the two most recently edited fields to decide which field to recompute. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
+The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that recomputes a dependent field from the most recently edited field, used by both the Web and APP transfer forms, treating the exchange rate as the anchor. When an amount (source or target) is the most recently edited field and the rate is greater than zero, the function SHALL recompute the OTHER amount from that amount and the rate — even if the other amount already holds a stale value (so per-keystroke edits keep the result in sync, and an auto-prefilled rate counts as a usable operand). When the rate is the most recently edited field, the function SHALL recompute an amount from whichever amount is present. When no usable rate is present, an edited amount combined with the other present amount SHALL derive the rate. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
 
 #### Scenario: Derive target amount from source and rate
 - **WHEN** source amount and exchange rate are both greater than zero and the target amount is empty
@@ -19,6 +19,11 @@ The system SHALL provide a single shared pure function `computeCrossCurrencyAmou
 - **WHEN** the exchange rate is present (e.g. auto-prefilled) and the user has entered only one amount, leaving exactly one of {source, target} empty
 - **THEN** the function computes the empty amount from the present amount and the rate
 - **AND** does not require the rate to have been explicitly edited by the user
+
+#### Scenario: Re-editing an amount recomputes the other from the rate
+- **WHEN** the source amount is the most recently edited field, the rate is greater than zero, and the target amount already holds a stale value from an earlier edit
+- **THEN** the function recomputes the target amount as `source / rate`, overwriting the stale value
+- **AND** this keeps the result correct across per-keystroke edits rather than freezing at the first computed value
 
 #### Scenario: Guard against invalid or insufficient input
 - **WHEN** two or more fields are empty (≤ 0), or any value participating in the computation is less than or equal to zero
