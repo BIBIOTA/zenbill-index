@@ -40,20 +40,22 @@
   - note: shouldPrefillRate TDD-covered; UI prefill wiring + reset-on-currency-change verification-pending: manual smoke
 
 ## 3. APP（app/）
-- [ ] 3.1 在 `TransactionForm.tsx` 新增跨幣別偵測與 target / rate 輸入欄
+- [x] 3.1 在 `TransactionForm.tsx` 新增跨幣別偵測與 target / rate 輸入欄
   - Acceptance: WHEN type 為 TRANSFER 且來源與目標帳戶幣別不同 THEN 顯示目標金額欄與匯率欄
   - Acceptance: WHEN 來源與目標帳戶同幣別 THEN 不顯示 target / rate 欄、走原本單一金額流程
   - Acceptance: WHEN 編輯任兩欄 THEN 透過共享 `computeCrossCurrencyAmount()` 自動算出第三欄
   - Depends on: 1.1
   - Independence: serial
-  - status: not_started
-- [ ] 3.2 APP 表單接上匯率預填並組裝 payload
+  - status: passing
+  - note: pure-UI wiring over already-TDD'd shared helpers; verification-pending: manual smoke (no FE component test infra)
+- [x] 3.2 APP 表單接上匯率預填並組裝 payload
   - Acceptance: WHEN 偵測到跨幣別且 rate 未被手動編輯 THEN 以 `useExchangeRate` 預填匯率、可覆寫
   - Acceptance: WHEN 送出跨幣別轉帳 THEN payload 帶 `amount = 來源幣金額 × sourceMultiplier`、`original_amount = 目標幣金額 × targetMultiplier`、`original_currency = 目標帳戶幣別`、`exchange_rate = rate`
   - Acceptance: WHEN 送出非跨幣別交易 THEN `original_amount` / `original_currency` / `exchange_rate` 皆為 undefined
   - Depends on: 1.2, 3.1
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: payload assembly via shared buildTransferPayloadFields (TDD-covered); prefill wiring verification-pending: manual smoke
 
 ## 4. 驗證與收尾
 - [ ] 4.1 兩端元件測試與跨平台同步驗證

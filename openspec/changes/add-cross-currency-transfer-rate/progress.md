@@ -53,3 +53,13 @@
   - Tests: shared full suite — 52 passed; frontend tsc -b clean
   - Note: UI prefill effect + reset-on-currency-change wiring verification-pending: manual smoke.
 - Next action: Start task 3.1 — add cross-currency detection + target/rate inputs to APP (app/) TransactionForm using shared helpers.
+
+## Session 7 — 2026-06-21 01:10
+- Stage: TDD
+- Task: 3.1 + 3.2 APP TransactionForm 跨幣別 UI、預填與 payload
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: app b2757f3 feat: cross-currency transfer with editable rate in APP form
+  - Tests: app/ TransactionForm.tsx has no own type errors (tsc); shared helpers TDD-covered (52 passed). The shared/index.ts `.ts`-extension tsc warnings are a pre-existing app-tsconfig quirk affecting all exports, not introduced here.
+  - Decision: 3.1/3.2 are pure-UI wiring over already-TDD'd shared helpers; no new red/green possible without FE component infra (per user). Detection/auto-compute/prefill/payload all delegate to shared (tested); UI behavior verification-pending: manual smoke.
+- Next action: Run task 4.1 cross-platform consistency check, then invoke verification-before-completion.
