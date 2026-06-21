@@ -1,22 +1,27 @@
 ## ADDED Requirements
 
 ### Requirement: System shall provide a shared cross-currency conversion function
-The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that derives the third of {source amount, target amount, exchange rate} from the two most recently edited values, used by both the Web and APP transfer forms. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
+The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that derives the missing one of {source amount, target amount, exchange rate} from the other two, used by both the Web and APP transfer forms. When exactly one field is empty (≤ 0) and the other two are greater than zero, the function SHALL compute the empty field regardless of how many fields were explicitly edited — so an auto-prefilled rate counts as a usable operand. When all three fields are greater than zero, the function SHALL use the two most recently edited fields to decide which field to recompute. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
 
 #### Scenario: Derive target amount from source and rate
-- **WHEN** the two most recently edited fields are source amount and exchange rate, both greater than zero
+- **WHEN** source amount and exchange rate are both greater than zero and the target amount is empty
 - **THEN** the function returns the target amount computed as `source / rate`, rounded to 2 decimal places
 
 #### Scenario: Derive source amount from target and rate
-- **WHEN** the two most recently edited fields are target amount and exchange rate, both greater than zero
+- **WHEN** target amount and exchange rate are both greater than zero and the source amount is empty
 - **THEN** the function returns the source amount computed as `target * rate`, rounded to 2 decimal places
 
 #### Scenario: Derive rate from source and target
-- **WHEN** the two most recently edited fields are source amount and target amount, both greater than zero
+- **WHEN** source amount and target amount are both greater than zero and the exchange rate is empty
 - **THEN** the function returns the exchange rate computed as `source / target`, rounded to 4 decimal places
 
+#### Scenario: Compute the empty amount from a prefilled rate
+- **WHEN** the exchange rate is present (e.g. auto-prefilled) and the user has entered only one amount, leaving exactly one of {source, target} empty
+- **THEN** the function computes the empty amount from the present amount and the rate
+- **AND** does not require the rate to have been explicitly edited by the user
+
 #### Scenario: Guard against invalid or insufficient input
-- **WHEN** fewer than two fields have been edited, or any value participating in the computation is less than or equal to zero
+- **WHEN** two or more fields are empty (≤ 0), or any value participating in the computation is less than or equal to zero
 - **THEN** the function performs no computation and leaves the existing values unchanged
 
 ### Requirement: System shall prefill an editable exchange rate from the rate service
@@ -50,6 +55,11 @@ Both the Web (`frontend/`) and APP (`app/`) transfer forms SHALL detect when a T
 #### Scenario: Auto-compute on field edits
 - **WHEN** the user edits any two of {source amount, target amount, exchange rate}
 - **THEN** the form computes the third field via the shared `computeCrossCurrencyAmount()` function
+
+#### Scenario: Entering one amount with a prefilled rate computes the other
+- **WHEN** the rate has been auto-prefilled (not manually edited) and the user enters only the source amount, or only the target amount
+- **THEN** the form auto-computes the other amount from the prefilled rate via `computeCrossCurrencyAmount()`
+- **AND** the target amount is not left at zero, so the submitted transfer credits the target account a non-zero amount
 
 #### Scenario: Prefill the rate once and respect manual overrides
 - **WHEN** a cross-currency transfer is detected and the user has not manually edited the rate

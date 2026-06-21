@@ -3,6 +3,7 @@
 
 ## What Changes
 - **cross-currency-transfer**: 抽出共享換算純函式（編輯來源/目標/匯率任兩欄自動算第三欄）、新增匯率預填 hook（沿用既有 `/exchange-rates` endpoint，可覆寫）、APP 端補齊整套跨幣別轉帳 UI、Web 端重構為呼叫共享函式並接上預填。後端不變更。
+- **修正（manual smoke finding）**：換算函式加入「單一空欄主規則」——預填匯率視為有效運算元，使用者只輸入一個金額即自動算出另一個，避免「預填匯率＋只填轉出金額」時轉入金額維持 0、送出造成目標帳戶入帳 0 的記帳錯誤。
 
 ## Impact
 - Affected specs: `specs/cross-currency-transfer/`

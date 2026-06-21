@@ -72,3 +72,15 @@
   - Commits: (verification task — no production code change)
   - Tests: shared suite 52 passed; grep confirms Web & APP forms reference the same 5 shared helpers (computeCrossCurrencyAmount x3, isCrossCurrencyTransfer x2, buildTransferPayloadFields x2, shouldPrefillRate x2, useExchangeRate x2) with identical counts; no leftover inline compute math in either form.
 - Next action: Invoke verification-before-completion; Web/APP component behavior remains verification-pending: manual smoke.
+
+## Session 9 — 2026-06-21 17:11
+- Stage: updating-spec
+- Scope change requested: Manual smoke on the APP emulator found that when the exchange rate is auto-prefilled (untouched) and only the source amount is entered, the target amount stays 0 (auto-compute requires 2 entries in lastEdited; a prefilled rate is not counted as "edited"). Submitting would debit source but credit target 0 — a ledger-correctness bug.
+- Artifacts updated:
+  - specs/cross-currency-transfer/spec.md — MODIFIED shared-function requirement to add the "single empty field" primary rule (prefilled rate counts as a usable operand); reworded derive scenarios to value-based conditions; added scenario "Compute the empty amount from a prefilled rate"; added form scenario "Entering one amount with a prefilled rate computes the other"; tightened Guard scenario to "two or more fields empty".
+  - design.md §4 — documented the precedence (single-empty-field rule before lastEdited tie-break).
+  - tasks.md — added Group 5 (5.1 shared fn rule, 5.2 form early-return removal, 5.3 re-run manual smoke).
+  - proposal.md — noted the fix under What Changes.
+- Validation: `openspec validate add-cross-currency-transfer-rate --strict` → valid (exit 0).
+- Note: verification-report.md (Session prior) is SUPERSEDED — a new verification run is required after the fix lands.
+- Next action: User approves spec update → run TDD on tasks 5.1/5.2, then re-run manual smoke (5.3), then re-verify.

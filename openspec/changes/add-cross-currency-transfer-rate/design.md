@@ -52,11 +52,10 @@ doc_language: 繁體中文
 抽出可單元測試的純函式，沿用 Web 既有語意：
 
 - 輸入：`{ source, target, rate, lastEdited }`，其中 `lastEdited` 為最近被編輯的欄位佇列（保留最後 2 個相異欄位）。
-- 規則：當恰好有 2 欄被編輯時，自動計算第三欄：
-  - 缺 `target`：`target = source / rate`
-  - 缺 `source`：`source = target * rate`
-  - 缺 `rate`：`rate = source / target`
-- 守衛：任一參與運算的值 `<= 0` 時不觸發自動換算。
+- 規則（優先序）：
+  1. **單一空欄主規則**：{source, target, rate} 中恰好一個為空（≤0）、另外兩個 > 0 時，直接算出該空欄（缺 `target`：`target = source / rate`；缺 `source`：`source = target * rate`；缺 `rate`：`rate = source / target`）。**自動預填的匯率視為有效運算元**，因此只輸入一個金額即可完成換算，不需使用者另外碰匯率欄。（修正 manual smoke 發現的「預填匯率＋只填轉出金額時轉入金額維持 0、送出會讓目標帳戶入帳 0」bug）
+  2. **三欄皆有值的 tie-break**：三欄皆 > 0 時，依 `lastEdited` 最近編輯的兩欄決定重算第三欄。
+- 守衛：兩欄以上為空，或任一參與運算的值 `<= 0` 時不觸發自動換算。
 - 精度：金額四捨五入至小數 2 位，匯率至小數 4 位（沿用 Web 既有規則）。
 
 ### 匯率方向定義（消除歧義）

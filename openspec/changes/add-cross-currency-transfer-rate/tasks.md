@@ -67,6 +67,27 @@
   - status: passing
   - note: both forms reference the same 5 shared helpers with identical counts; no inline compute remains; shared suite 52 passed. Web/APP component-level behavior verification-pending: manual smoke.
 
+## 5. 修正：預填匯率運算元（manual smoke finding）
+- [ ] 5.1 `computeCrossCurrencyAmount()` 加入「單一空欄主規則」
+  - Acceptance: WHEN {source,target,rate} 恰好一欄為空（≤0）、另外兩欄 > 0 THEN 直接算出該空欄（不論被編輯欄位數，預填匯率亦視為有效運算元）
+  - Acceptance: WHEN 三欄皆 > 0 THEN 沿用 `lastEdited` 最近兩欄 tie-break 決定重算欄位
+  - Acceptance: WHEN 兩欄以上為空或參與運算值 ≤ 0 THEN 不計算、回傳原值
+  - Acceptance: WHEN 既有 1.1/1.2/1.3 測試重跑 THEN 全數仍通過（向後相容）
+  - Depends on: 1.1
+  - Independence: serial
+  - status: not_started
+- [ ] 5.2 兩端表單移除「lastEdited<2 即 return」早退，改由共享函式判定
+  - Acceptance: WHEN 匯率自動預填且只輸入轉出金額（未碰匯率/轉入）THEN 轉入金額自動算出、非 0（Web + APP 一致）
+  - Acceptance: WHEN 送出該筆 THEN `original_amount` 為換算後的目標幣金額（非 0）
+  - Depends on: 5.1, 2.2, 3.2
+  - Independence: serial
+  - status: not_started
+- [ ] 5.3 重跑 manual smoke 驗收（APP emulator）
+  - Acceptance: WHEN 在 emulator 重現「中國信託(TWD)→王道美金(USD)、預填匯率、只填轉出 1000」THEN 轉入金額自動顯示非 0 並可正確送出/餘額正確
+  - Depends on: 5.2
+  - Independence: serial
+  - status: not_started
+
 ## Optional artifacts
 - [ ] PlantUML diagrams (spec-driven-dev:writing-uml)
 - [ ] Figma designs (spec-driven-dev:writing-figma)
