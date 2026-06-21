@@ -3,6 +3,7 @@ import {
   computeCrossCurrencyAmount,
   isCrossCurrencyTransfer,
   buildTransferPayloadFields,
+  shouldPrefillRate,
 } from '../crossCurrency'
 
 describe('computeCrossCurrencyAmount', () => {
@@ -140,5 +141,16 @@ describe('buildTransferPayloadFields', () => {
       original_currency: undefined,
       exchange_rate: undefined,
     })
+  })
+})
+
+describe('shouldPrefillRate', () => {
+  it('Prefill the rate once and respect manual overrides', () => {
+    // cross-currency + rate not yet manually edited → prefill
+    expect(shouldPrefillRate(true, false)).toBe(true)
+    // once the user edits the rate manually → stop overwriting
+    expect(shouldPrefillRate(true, true)).toBe(false)
+    // not cross-currency → never prefill
+    expect(shouldPrefillRate(false, false)).toBe(false)
   })
 })
