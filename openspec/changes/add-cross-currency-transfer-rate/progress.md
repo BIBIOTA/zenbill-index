@@ -99,3 +99,18 @@
   - Commits: red (compute empty amount from prefilled rate); a2b785a feat: green - single-empty-field rule treats prefilled rate as operand
   - Tests: crossCurrency.test.ts — 12 passed (incl. new scenario + all prior backward-compat); tsc clean
 - Next action: Start task 5.2 — remove the lastEdited<2 early-return in both forms so the shared function decides; re-wire Web + APP.
+
+## Session 12 — 2026-06-21 17:24
+- Stage: TDD
+- Task: 5.2 remove form early-return; drive auto-compute via shared fn
+- Transition: not_started → in_progress
+- Next action: Remove `lastEdited<2` early-return in Web + APP forms; APP switches to diff-based field application; typecheck both.
+
+## Session 13 — 2026-06-21 17:28
+- Stage: TDD
+- Task: 5.2 remove form early-return; drive auto-compute via shared fn
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: frontend 34e2b3f feat: drive cross-currency auto-compute via shared fn (remove early-return); app 6fc1bb4 feat: prefilled rate computes amount on single edit (diff-based apply)
+  - Tests: frontend `tsc -b` exit 0; app form file no own type errors. Behavior to be confirmed by 5.3 manual smoke.
+- Next action: Start task 5.3 — reload app on emulator and re-run the prefilled-rate + source-only smoke (target must auto-compute non-zero).

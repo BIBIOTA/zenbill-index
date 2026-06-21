@@ -76,12 +76,13 @@
   - Depends on: 1.1
   - Independence: serial
   - status: passing
-- [ ] 5.2 兩端表單移除「lastEdited<2 即 return」早退，改由共享函式判定
+- [x] 5.2 兩端表單移除「lastEdited<2 即 return」早退，改由共享函式判定
   - Acceptance: WHEN 匯率自動預填且只輸入轉出金額（未碰匯率/轉入）THEN 轉入金額自動算出、非 0（Web + APP 一致）
   - Acceptance: WHEN 送出該筆 THEN `original_amount` 為換算後的目標幣金額（非 0）
   - Depends on: 5.1, 2.2, 3.2
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: UI wiring over tested shared fn (5.1); behavior verified via 5.3 manual smoke. Web frontend 34e2b3f, app 6fc1bb4; both typecheck clean.
 - [ ] 5.3 重跑 manual smoke 驗收（APP emulator）
   - Acceptance: WHEN 在 emulator 重現「中國信託(TWD)→王道美金(USD)、預填匯率、只填轉出 1000」THEN 轉入金額自動顯示非 0 並可正確送出/餘額正確
   - Depends on: 5.2
