@@ -1,14 +1,14 @@
 # Tasks: add-cross-currency-transfer-rate
 
 ## 1. 共享層（packages/shared）
-- [ ] 1.1 新增 `computeCrossCurrencyAmount()` 純函式
+- [x] 1.1 新增 `computeCrossCurrencyAmount()` 純函式
   - Acceptance: WHEN 已編輯欄位恰為 source 與 rate（缺 target）且兩值皆 > 0 THEN 回傳 `target = source / rate`（四捨五入至小數 2 位）
   - Acceptance: WHEN 已編輯欄位恰為 target 與 rate（缺 source）且兩值皆 > 0 THEN 回傳 `source = target * rate`（四捨五入至小數 2 位）
   - Acceptance: WHEN 已編輯欄位恰為 source 與 target（缺 rate）且兩值皆 > 0 THEN 回傳 `rate = source / target`（四捨五入至小數 4 位）
   - Acceptance: WHEN 任一參與運算值 <= 0 或被編輯欄位少於 2 個 THEN 不計算、回傳原值
   - Depends on: -
   - Independence: independent
-  - status: not_started
+  - status: passing
 - [ ] 1.2 新增 `useExchangeRate(from, to)` hook
   - Acceptance: WHEN 傳入 from / to 幣別 THEN 呼叫 `GET /exchange-rates?from=<from>&to=<to>` 並回傳 `rate = 1 / Y`（Y 為 API 回傳的「1 from = Y to」），方向與 `computeCrossCurrencyAmount` 的 `來源幣 / 目標幣` 定義一致
   - Acceptance: WHEN from 或 to 為空 THEN 不發出請求
