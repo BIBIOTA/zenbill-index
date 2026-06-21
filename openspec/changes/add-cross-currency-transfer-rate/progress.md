@@ -43,3 +43,13 @@
   - Tests: shared crossCurrency.test.ts — 10 passed; frontend `tsc -b` clean
   - Decision: no FE component test infra (per user); UI-agnostic logic extracted to shared with TDD; pure-UI wiring marked verification-pending: manual smoke. Pre-existing eslint findings (set-state-in-effect, _/_oa/_er unused) left untouched (out of scope).
 - Next action: Start task 2.2 — extract shouldPrefillRate to shared (TDD) and wire Web form rate prefill via useExchangeRate.
+
+## Session 6 — 2026-06-21 00:55
+- Stage: TDD
+- Task: 2.2 Web 表單接上匯率自動預填
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: red (shouldPrefillRate); root 51e3058 feat: green - shouldPrefillRate shared helper; frontend 82d9ae3 feat: prefill editable exchange rate in Web transfer form
+  - Tests: shared full suite — 52 passed; frontend tsc -b clean
+  - Note: UI prefill effect + reset-on-currency-change wiring verification-pending: manual smoke.
+- Next action: Start task 3.1 — add cross-currency detection + target/rate inputs to APP (app/) TransactionForm using shared helpers.

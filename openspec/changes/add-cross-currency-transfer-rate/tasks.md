@@ -30,13 +30,14 @@
   - Independence: serial
   - status: passing
   - note: shared helpers (isCrossCurrencyTransfer/buildTransferPayloadFields) TDD-covered; pure-UI wiring verification-pending: manual smoke
-- [ ] 2.2 在 Web 表單接上匯率自動預填
+- [x] 2.2 在 Web 表單接上匯率自動預填
   - Acceptance: WHEN 偵測到 `isCrossCurrency` 且使用者尚未手動編輯 rate THEN 以 `useExchangeRate` 預填匯率欄
   - Acceptance: WHEN 使用者手動修改 rate 後 THEN 後續不再以預填值覆寫
   - Acceptance: WHEN 來源與目標帳戶切換為同幣別 THEN 隱藏 rate / target 欄並重置預填與 `lastEdited` 狀態
   - Depends on: 1.2, 2.1
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: shouldPrefillRate TDD-covered; UI prefill wiring + reset-on-currency-change verification-pending: manual smoke
 
 ## 3. APP（app/）
 - [ ] 3.1 在 `TransactionForm.tsx` 新增跨幣別偵測與 target / rate 輸入欄
