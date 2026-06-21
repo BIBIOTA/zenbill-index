@@ -9,18 +9,18 @@
   - Depends on: -
   - Independence: independent
   - status: passing
-- [ ] 1.2 新增 `useExchangeRate(from, to)` hook
+- [x] 1.2 新增 `useExchangeRate(from, to)` hook
   - Acceptance: WHEN 傳入 from / to 幣別 THEN 呼叫 `GET /exchange-rates?from=<from>&to=<to>` 並回傳 `rate = 1 / Y`（Y 為 API 回傳的「1 from = Y to」），方向與 `computeCrossCurrencyAmount` 的 `來源幣 / 目標幣` 定義一致
   - Acceptance: WHEN from 或 to 為空 THEN 不發出請求
   - Acceptance: WHEN API 失敗 THEN hook 不拋錯阻擋呼叫端、回傳無預填值
   - Depends on: -
   - Independence: independent
-  - status: not_started
-- [ ] 1.3 撰寫共享層單元測試
+  - status: passing
+- [x] 1.3 撰寫共享層單元測試
   - Acceptance: WHEN 執行 shared 測試 THEN 涵蓋 1.1 三種缺欄情境、`<= 0` 守衛、精度、以及 1.2 的 rate 倒數方向轉換，全部通過
   - Depends on: 1.1, 1.2
   - Independence: serial
-  - status: not_started
+  - status: passing
 
 ## 2. Web（frontend/）
 - [ ] 2.1 重構 `TransactionForm.tsx` 改用共享 `computeCrossCurrencyAmount()`
