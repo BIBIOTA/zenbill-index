@@ -84,6 +84,18 @@ docker exec -it zenbill_api /app/manual_sync --days 30
 
 ## 已知坑點
 
+**直寫 transactions 必須同步 accounts.balance**
+- `accounts.balance` 是 App 在交易寫入路徑上**逐筆維護的快取欄位**，不是查詢時即時計算
+- 直接對 `transactions` 下 SQL（INSERT/UPDATE/DELETE）**不會**連動 `balance`，會造成餘額與交易不一致
+- 慣例（以該帳戶為**來源**的交易）：`balance = Σ INCOME − Σ EXPENSE − Σ TRANSFER`
+- **轉入款（target_account_id）也會影響餘額**：當別的帳戶對本帳戶做 TRANSFER（`target_account_id = 本帳戶`）時，本帳戶**收到**轉入款，`balance += 該 TRANSFER 金額`。這類交易**不會**出現在本帳戶的 `account_id` 列中。
+  - 典型情境：信用卡繳款是「銀行帳戶 → 信用卡」的 TRANSFER，記在銀行帳戶（`account_id=銀行`、`target_account_id=信用卡`）。因此**信用卡的 `balance ≠ Σ INCOME − Σ EXPENSE − Σ TRANSFER`**（只查 `account_id=信用卡` 會少算繳款轉入，看起來「對不起來」屬正常）。
+  - 完整公式：`balance = Σ(INCOME) − Σ(EXPENSE) − Σ(account_id=本帳戶 的 TRANSFER) + Σ(target_account_id=本帳戶 的 TRANSFER)`
+- **正確做法（擇一）：**
+  - 走 App / API 的寫入路徑（會自動更新 balance）
+  - 必須直寫 DB 時，於同一 transaction 內手動補 balance 差額：新增/刪除 EXPENSE 時 `balance -= ΔEXPENSE`，INCOME 反向；金額修改取差值
+- 差額調整比整個重算安全（不需確知完整公式，只靠各 type 對 balance 的係數）
+
 **CGO 依賴**
 - Tesseract OCR 需要 C 函式庫（tesseract + leptonica），必須設定 `CGO_CPPFLAGS` / `CGO_LDFLAGS`
 - 未設定時 `go build` 會失敗，錯誤訊息為找不到 header file
