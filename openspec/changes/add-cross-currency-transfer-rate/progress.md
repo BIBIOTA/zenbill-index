@@ -84,3 +84,18 @@
 - Validation: `openspec validate add-cross-currency-transfer-rate --strict` → valid (exit 0).
 - Note: verification-report.md (Session prior) is SUPERSEDED — a new verification run is required after the fix lands.
 - Next action: User approves spec update → run TDD on tasks 5.1/5.2, then re-run manual smoke (5.3), then re-verify.
+
+## Session 10 — 2026-06-21 17:15
+- Stage: TDD
+- Task: 5.1 computeCrossCurrencyAmount single-empty-field rule
+- Transition: not_started → in_progress
+- Next action: Write failing test "Compute the empty amount from a prefilled rate" (prefilled rate + only source entered → target computed).
+
+## Session 11 — 2026-06-21 17:20
+- Stage: TDD
+- Task: 5.1 computeCrossCurrencyAmount single-empty-field rule
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: red (compute empty amount from prefilled rate); a2b785a feat: green - single-empty-field rule treats prefilled rate as operand
+  - Tests: crossCurrency.test.ts — 12 passed (incl. new scenario + all prior backward-compat); tsc clean
+- Next action: Start task 5.2 — remove the lastEdited<2 early-return in both forms so the shared function decides; re-wire Web + APP.
