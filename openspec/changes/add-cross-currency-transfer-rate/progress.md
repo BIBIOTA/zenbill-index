@@ -33,3 +33,13 @@
   - Tests: full @zenbill/shared suite — 46 passed (7 files); crossCurrency 5, useExchangeRate 4
   - Note: 1.3 is a test-aggregation task; the missing-field/<=0/precision/rate-inversion scenarios were already red->green tested under 1.1/1.2, so no separate red was needed for the consolidation test (implementation predates it).
 - Next action: Start task 2.1 — refactor frontend TransactionForm to call shared computeCrossCurrencyAmount (behavior unchanged).
+
+## Session 5 — 2026-06-21 00:45
+- Stage: TDD
+- Task: 2.1 重構 Web TransactionForm 改用共享 computeCrossCurrencyAmount
+- Transition: in_progress → passing
+- Evidence:
+  - Commits: red (isCrossCurrencyTransfer/buildTransferPayloadFields); root ea8edfd feat: green - share cross-currency detection and payload helpers; frontend b70d28b refactor: use shared cross-currency helpers in TransactionForm
+  - Tests: shared crossCurrency.test.ts — 10 passed; frontend `tsc -b` clean
+  - Decision: no FE component test infra (per user); UI-agnostic logic extracted to shared with TDD; pure-UI wiring marked verification-pending: manual smoke. Pre-existing eslint findings (set-state-in-effect, _/_oa/_er unused) left untouched (out of scope).
+- Next action: Start task 2.2 — extract shouldPrefillRate to shared (TDD) and wire Web form rate prefill via useExchangeRate.

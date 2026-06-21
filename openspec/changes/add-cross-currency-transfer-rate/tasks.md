@@ -23,12 +23,13 @@
   - status: passing
 
 ## 2. Web（frontend/）
-- [ ] 2.1 重構 `TransactionForm.tsx` 改用共享 `computeCrossCurrencyAmount()`
+- [x] 2.1 重構 `TransactionForm.tsx` 改用共享 `computeCrossCurrencyAmount()`
   - Acceptance: WHEN 在 Web 進行跨幣別轉帳並編輯任兩欄 THEN 第三欄自動換算結果與重構前完全一致（行為不變）
   - Acceptance: WHEN 移除內嵌換算邏輯後 THEN `frontend/` 不再保留重複的換算實作
   - Depends on: 1.1
   - Independence: serial
-  - status: not_started
+  - status: passing
+  - note: shared helpers (isCrossCurrencyTransfer/buildTransferPayloadFields) TDD-covered; pure-UI wiring verification-pending: manual smoke
 - [ ] 2.2 在 Web 表單接上匯率自動預填
   - Acceptance: WHEN 偵測到 `isCrossCurrency` 且使用者尚未手動編輯 rate THEN 以 `useExchangeRate` 預填匯率欄
   - Acceptance: WHEN 使用者手動修改 rate 後 THEN 後續不再以預填值覆寫
