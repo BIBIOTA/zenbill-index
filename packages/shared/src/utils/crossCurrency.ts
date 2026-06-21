@@ -126,3 +126,12 @@ export function buildTransferPayloadFields(input: TransferPayloadInput): Transfe
     exchange_rate: input.rate,
   }
 }
+
+/**
+ * Decides whether the form should prefill the rate from the live rate service:
+ * only for cross-currency transfers where the user has not manually edited the
+ * rate yet. Once the user overrides the rate, prefilling stops.
+ */
+export function shouldPrefillRate(isCrossCurrency: boolean, rateManuallyEdited: boolean): boolean {
+  return isCrossCurrency && !rateManuallyEdited
+}
