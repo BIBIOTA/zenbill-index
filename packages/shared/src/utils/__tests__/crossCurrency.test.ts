@@ -58,6 +58,20 @@ describe('computeCrossCurrencyAmount', () => {
     expect(result.source).toBe(99.86)
   })
 
+  it('Compute the empty amount from a prefilled rate', () => {
+    // Rate is present (auto-prefilled, NOT in lastEdited); only source entered.
+    // The single-empty-field rule must compute target from source and rate.
+    const result = computeCrossCurrencyAmount({
+      source: 1000,
+      target: 0,
+      rate: 31.6456,
+      lastEdited: ['source'],
+    })
+    expect(result.target).toBeCloseTo(31.6, 1) // 1000 / 31.6456 ≈ 31.6
+    expect(result.source).toBe(1000)
+    expect(result.rate).toBe(31.6456)
+  })
+
   it('Guard against invalid or insufficient input', () => {
     // fewer than two fields edited → unchanged
     const single = computeCrossCurrencyAmount({
