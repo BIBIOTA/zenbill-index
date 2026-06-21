@@ -23,8 +23,6 @@ export interface CrossCurrencyResult {
   rate: number
 }
 
-const ALL_FIELDS: CrossCurrencyField[] = ['source', 'target', 'rate']
-
 function roundTo(value: number, decimals: number): number {
   const factor = 10 ** decimals
   return Math.round(value * factor) / factor
@@ -41,45 +39,29 @@ function lastTwoDistinct(lastEdited: CrossCurrencyField[]): CrossCurrencyField[]
 }
 
 /**
- * Derives the missing one of {source, target, rate} from the other two.
+ * Recomputes a dependent field from the most recently edited field, anchoring on
+ * the exchange rate. Editing an amount recomputes the OTHER amount from the rate
+ * (overwriting any stale value, so per-keystroke edits stay in sync and an
+ * auto-prefilled rate acts as a usable operand). Editing the rate recomputes an
+ * amount from whichever amount is present. When no usable rate exists, an edited
+ * amount plus the other present amount derives the rate.
  *
- * Precedence:
- *  1. Single-empty-field rule: when exactly one field is empty (<= 0) and the
- *     other two are > 0, compute the empty field — regardless of how many
- *     fields were explicitly edited. This lets an auto-prefilled rate act as a
- *     usable operand, so entering just one amount completes the conversion.
- *  2. Otherwise, when all three fields are > 0, use the two most recently edited
- *     fields to decide which field to recompute.
- *
- * Returns the values unchanged when two or more fields are empty, or when a
- * value participating in the computation is <= 0.
+ * Returns the values unchanged when the operands needed for a computation are
+ * not all greater than zero.
  */
 export function computeCrossCurrencyAmount(input: CrossCurrencyInput): CrossCurrencyResult {
   const { source, target, rate } = input
+  const edited = lastTwoDistinct(input.lastEdited)[0] // most recently edited field
 
-  // Rule 1: exactly one field empty and the other two present → fill the gap.
-  const emptyFields = ALL_FIELDS.filter((f) => ({ source, target, rate })[f] <= 0)
-  if (emptyFields.length === 1) {
-    const missing = emptyFields[0]
-    if (missing === 'target') return { source, target: roundTo(source / rate, 2), rate }
-    if (missing === 'source') return { source: roundTo(target * rate, 2), target, rate }
-    return { source, target, rate: roundTo(source / target, 4) }
-  }
-
-  // Rule 2: all three present → tie-break on the two most recently edited.
-  const edited = lastTwoDistinct(input.lastEdited)
-  if (edited.length < 2) {
-    return { source, target, rate }
-  }
-  const missing = ALL_FIELDS.find((f) => !edited.includes(f))
-  if (missing === 'target' && source > 0 && rate > 0) {
-    return { source, target: roundTo(source / rate, 2), rate }
-  }
-  if (missing === 'source' && target > 0 && rate > 0) {
-    return { source: roundTo(target * rate, 2), target, rate }
-  }
-  if (missing === 'rate' && source > 0 && target > 0) {
-    return { source, target, rate: roundTo(source / target, 4) }
+  if (edited === 'source') {
+    if (source > 0 && rate > 0) return { source, target: roundTo(source / rate, 2), rate }
+    if (source > 0 && target > 0) return { source, target, rate: roundTo(source / target, 4) }
+  } else if (edited === 'target') {
+    if (target > 0 && rate > 0) return { source: roundTo(target * rate, 2), target, rate }
+    if (target > 0 && source > 0) return { source, target, rate: roundTo(source / target, 4) }
+  } else if (edited === 'rate') {
+    if (rate > 0 && source > 0) return { source, target: roundTo(source / rate, 2), rate }
+    if (rate > 0 && target > 0) return { source: roundTo(target * rate, 2), target, rate }
   }
 
   return { source, target, rate }
