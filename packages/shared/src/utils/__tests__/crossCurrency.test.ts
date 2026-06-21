@@ -46,7 +46,7 @@ describe('computeCrossCurrencyAmount', () => {
     expect(result.target).toBe(3150)
   })
 
-  it('Derive from the two most recently edited fields', () => {
+  it('Auto-compute on field edits (derives from the two most recently edited fields)', () => {
     // Three edits in order source → rate → target; the last two distinct are
     // target + rate, so the missing field is source.
     const result = computeCrossCurrencyAmount({

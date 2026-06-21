@@ -37,7 +37,8 @@
   - Depends on: 1.2, 2.1
   - Independence: serial
   - status: passing
-  - note: shouldPrefillRate TDD-covered; UI prefill wiring + reset-on-currency-change verification-pending: manual smoke
+  - note: shouldPrefillRate TDD-covered; UI prefill wiring verification-pending: manual smoke
+  - deferred: scenario "Reset state when the currency relationship changes" is a pure-UI effect (no FE component test infra) — verify via manual smoke on Web + APP
 
 ## 3. APP（app/）
 - [x] 3.1 在 `TransactionForm.tsx` 新增跨幣別偵測與 target / rate 輸入欄
