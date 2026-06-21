@@ -41,20 +41,37 @@ function lastTwoDistinct(lastEdited: CrossCurrencyField[]): CrossCurrencyField[]
 }
 
 /**
- * Derives the third of {source, target, rate} from the two most recently edited
- * values. Returns the values unchanged when fewer than two distinct fields were
- * edited or when a value participating in the computation is <= 0.
+ * Derives the missing one of {source, target, rate} from the other two.
+ *
+ * Precedence:
+ *  1. Single-empty-field rule: when exactly one field is empty (<= 0) and the
+ *     other two are > 0, compute the empty field — regardless of how many
+ *     fields were explicitly edited. This lets an auto-prefilled rate act as a
+ *     usable operand, so entering just one amount completes the conversion.
+ *  2. Otherwise, when all three fields are > 0, use the two most recently edited
+ *     fields to decide which field to recompute.
+ *
+ * Returns the values unchanged when two or more fields are empty, or when a
+ * value participating in the computation is <= 0.
  */
 export function computeCrossCurrencyAmount(input: CrossCurrencyInput): CrossCurrencyResult {
   const { source, target, rate } = input
-  const edited = lastTwoDistinct(input.lastEdited)
 
+  // Rule 1: exactly one field empty and the other two present → fill the gap.
+  const emptyFields = ALL_FIELDS.filter((f) => ({ source, target, rate })[f] <= 0)
+  if (emptyFields.length === 1) {
+    const missing = emptyFields[0]
+    if (missing === 'target') return { source, target: roundTo(source / rate, 2), rate }
+    if (missing === 'source') return { source: roundTo(target * rate, 2), target, rate }
+    return { source, target, rate: roundTo(source / target, 4) }
+  }
+
+  // Rule 2: all three present → tie-break on the two most recently edited.
+  const edited = lastTwoDistinct(input.lastEdited)
   if (edited.length < 2) {
     return { source, target, rate }
   }
-
   const missing = ALL_FIELDS.find((f) => !edited.includes(f))
-
   if (missing === 'target' && source > 0 && rate > 0) {
     return { source, target: roundTo(source / rate, 2), rate }
   }
