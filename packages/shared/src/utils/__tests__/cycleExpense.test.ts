@@ -1,75 +1,43 @@
 import { describe, expect, it } from 'vitest'
 import { computeCycleNetAmountDue } from '../cycleExpense'
 
-const ACCOUNT_ID = 'acct-1'
-const OTHER_ACCOUNT_ID = 'acct-2'
-
 describe('computeCycleNetAmountDue', () => {
   it('EXPENSE increases the net amount due', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'EXPENSE', account_id: ACCOUNT_ID, target_account_id: null, amount: 300, original_amount: null }],
-      ACCOUNT_ID,
-    )
+    const total = computeCycleNetAmountDue([{ type: 'EXPENSE', amount: 300 }])
     expect(total).toBe(300)
   })
 
   it('INCOME decreases the net amount due', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'INCOME', account_id: ACCOUNT_ID, target_account_id: null, amount: 100, original_amount: null }],
-      ACCOUNT_ID,
-    )
+    const total = computeCycleNetAmountDue([{ type: 'INCOME', amount: 100 }])
     expect(total).toBe(-100)
   })
 
-  it('TRANSFER out of this account increases the net amount due', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'TRANSFER', account_id: ACCOUNT_ID, target_account_id: OTHER_ACCOUNT_ID, amount: 200, original_amount: null }],
-      ACCOUNT_ID,
-    )
-    expect(total).toBe(200)
+  it('TRANSFER contributes nothing, whether a payment out or a payment received', () => {
+    const total = computeCycleNetAmountDue([
+      { type: 'TRANSFER', amount: 200 },
+      { type: 'TRANSFER', amount: 1962 },
+    ])
+    expect(total).toBeCloseTo(0)
   })
 
-  it('TRANSFER into this account (a payment received) decreases the net amount due', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'TRANSFER', account_id: OTHER_ACCOUNT_ID, target_account_id: ACCOUNT_ID, amount: 1962, original_amount: null }],
-      ACCOUNT_ID,
-    )
-    expect(total).toBe(-1962)
-  })
-
-  it('TRANSFER into this account uses original_amount when set (cross-currency)', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'TRANSFER', account_id: OTHER_ACCOUNT_ID, target_account_id: ACCOUNT_ID, amount: 3000, original_amount: 100 }],
-      ACCOUNT_ID,
-    )
-    expect(total).toBe(-100)
-  })
-
-  it('mixes EXPENSE and an incoming payment into a net figure, matching the production reconciliation case', () => {
-    // 永豐Sports信用卡 6/16-7/15: 9311 in EXPENSE, one 1962 TRANSFER-in payment.
+  it('mixes EXPENSE and an incoming payment, matching the production reconciliation case', () => {
+    // 永豐Sports信用卡 6/16-7/15 bill: 9311 in EXPENSE; the 1962 mid-cycle
+    // payment settles a previous cycle's balance and must not reduce this.
     const transactions = [
-      { type: 'EXPENSE', account_id: ACCOUNT_ID, target_account_id: null, amount: 262, original_amount: null },
-      { type: 'EXPENSE', account_id: ACCOUNT_ID, target_account_id: null, amount: 9049, original_amount: null },
-      { type: 'TRANSFER', account_id: OTHER_ACCOUNT_ID, target_account_id: ACCOUNT_ID, amount: 1962, original_amount: null },
+      { type: 'EXPENSE', amount: 262 },
+      { type: 'EXPENSE', amount: 9049 },
+      { type: 'TRANSFER', amount: 1962 },
     ]
-    expect(computeCycleNetAmountDue(transactions, ACCOUNT_ID)).toBe(7349)
+    expect(computeCycleNetAmountDue(transactions)).toBe(9311)
   })
 
   it('credit card cashback (recorded as INCOME) reduces the net amount due, aligning with the bill', () => {
     const transactions = [
-      { type: 'EXPENSE', account_id: ACCOUNT_ID, target_account_id: null, amount: 9311, original_amount: null },
-      { type: 'INCOME', account_id: ACCOUNT_ID, target_account_id: null, amount: 88, original_amount: null },
-      { type: 'TRANSFER', account_id: OTHER_ACCOUNT_ID, target_account_id: ACCOUNT_ID, amount: 1962, original_amount: null },
+      { type: 'EXPENSE', amount: 9311 },
+      { type: 'INCOME', amount: 88 },
+      { type: 'TRANSFER', amount: 1962 },
     ]
-    // 9311 (spend) - 88 (cashback) - 1962 (payment received) = 7261
-    expect(computeCycleNetAmountDue(transactions, ACCOUNT_ID)).toBe(7261)
-  })
-
-  it('a TRANSFER not touching this account contributes nothing', () => {
-    const total = computeCycleNetAmountDue(
-      [{ type: 'TRANSFER', account_id: OTHER_ACCOUNT_ID, target_account_id: 'acct-3', amount: 500, original_amount: null }],
-      ACCOUNT_ID,
-    )
-    expect(total).toBeCloseTo(0)
+    // 9311 (spend) - 88 (cashback) = 9223; the payment received is excluded.
+    expect(computeCycleNetAmountDue(transactions)).toBe(9223)
   })
 })
