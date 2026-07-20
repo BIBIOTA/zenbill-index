@@ -86,9 +86,29 @@ $ git -C backend log -1 --format="%H %cI %s"
 1. **環境不一致假說**：使用者看到的 APP／網頁畫面，實際連線的後端與資料庫，可能不是我這次直接查詢的 `zenbill_prod`（例如：APP 版本連到不同網域、Web 端用了瀏覽器快取的舊回應、或是有第三個目前未被列出的環境）。支持證據：production image 明確落後於今天的修正，但使用者回報的「餘額」數字卻精準符合修正後的公式，兩者矛盾，暗示這次修正**還沒有機會透過 production 部署影響使用者畫面**，那使用者看到的「10843」要嘛是巧合、要嘛來自別的路徑（例如已經手動重新整理拿到 dev/preview 環境的資料，但我用 dev 資料重算又對不上）。
 2. **時間點不同步假說**：因為信用卡帳務資料可能被使用者本人在調查期間持續操作（例如反覆切換某幾筆交易的延期狀態），我下 SQL 查詢的當下資料快照，可能已經跟使用者截圖/觀察當下的資料狀態不同步，導致我算出來的「正確答案」跟使用者看到的畫面各自基於不同時間點的資料，因此對不起來。
 
-## Next Action
-- Route to: **停在這裡，向使用者確認以下資訊後再繼續**（依 Stop Conditions：「同一假說失敗到需要重新考慮」且「需要使用者才能取得的存取資訊」——目前無法用已認證身份直接呼叫 production API 來看使用者當下實際拿到的 JSON，也無法確定使用者當下裝置連的是哪個環境）：
-  1. 使用者是在 **APP（手機）** 還是 **網頁版** 上看到這兩個數字？如果是 APP，是**正式版**（`com.zenbill.app`）還是**測試版/preview**（`com.zenbill.app.preview`，橘色 DEV 角標）？
-  2. 方便的話，麻煩截圖「本期支出 12666」與「餘額 10843」同時出現的畫面，讓我核對畫面上其他欄位（例如帳單週期文字、交易筆數）是否與我用 SQL 查到的 15 筆交易一致。
-  3. 這兩個數字是「剛剛」看到的，還是有一段時間了？如果是剛剛，麻煩重新整理一次頁面，看數字是否有變化（有機會是快取造成的暫時性不一致）。
-- Minimal fix/test direction: 若確認使用者確實連線到 `zenbill_prod`／已部署的 production 後端，則需要先執行 `docker compose -f docker-compose.yml -f docker-compose.prod.yml build api-prod worker-prod && docker compose ... up -d api-prod worker-prod` 之類的重新建置＋部署流程，把今天完成的 `balanceAtEnd` 修正真正推上 production（**這是一個有風險、會影響正式環境的操作，需要另外取得使用者明確同意才能執行，不在本次除錯範圍內自動進行**）。若確認後仍與「本期支出」對不上，才需要進一步排查「本期支出」計算路徑本身。
+## Next Action（已更新：使用者已確認並同意部署）
+- 使用者確認畫面來源：**APP 正式版**（`com.zenbill.app`，連線 `zenapi.bibiota.com`）。
+- 追查網路路徑確認：`zenapi.bibiota.com` → cloudflared tunnel（`/etc/cloudflared/config.yml`）→ `localhost:8888` → nginx（`/opt/homebrew/etc/nginx/servers/zenbill.conf:25` `proxy_pass http://127.0.0.1:8091`）→ `zenbill_api_prod` 容器。確認使用者的正式 APP 100% 打到本次查驗的同一個 `zenbill_prod` 資料庫與同一個（先前確認為 5 週前舊版本的）後端容器，排除「連到不同環境」的假說。
+- 已取得使用者明確同意，執行部署：
+  ```
+  $ docker compose -f docker-compose.yml -f docker-compose.prod.yml build api-prod worker-prod
+  ...
+  Image backend-worker-prod Built
+  Image backend-api-prod Built
+
+  $ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api-prod worker-prod
+  Container zenbill_api_prod Recreated
+  Container zenbill_worker_prod Recreated
+  ...
+  Container zenbill_api_prod Started
+  Container zenbill_worker_prod Started
+
+  $ docker image inspect backend-api-prod --format '{{.Created}}'
+  2026-07-20T10:22:41.585924887Z   <-- 新 image，包含今天的 balanceAtEnd 修正
+
+  $ curl -s https://zenapi.bibiota.com/health
+  {"env":"production","service":"ZenBill","status":"ok"}
+  ```
+- 部署後重新查驗同一帳戶（`f2b8a92c-...`）同一期間（6/16-7/15）的資料，確認底層交易資料在部署前後完全沒有變動（`balance` 仍為 -12386，15 筆交易明細完全一致），代表部署前後的任何數字差異都只來自程式碼修正本身，不是資料被同時修改造成的干擾。
+- Route to: 已完成部署，回報使用者用正式版 APP 重新整理帳戶頁確認畫面數字是否已更新為 `balanceAtEnd` 修正後的值（餘額應為 10843，與使用者最初回報的觀察一致）。
+- 仍待釐清（非本次除錯範圍，留待使用者決定是否要繼續查）：`cycleExpenseTotal`（本期支出）前端計算目前完全忽略 TRANSFER 類型交易（`frontend/src/pages/AccountDetailPage.tsx:150-158` 與 `app/app/accounts/[id].tsx:85-91` 的 `reduce` 對 TRANSFER 直接 `return sum`，不做任何加減），而「餘額」計算對 TRANSFER 有正確處理（轉入本帳戶視為還款、減少負債）。這筆帳戶本期恰好有一筆 7/1 的 1962 元轉入交易，如果「本期支出」的語意應該要是「本期淨應付金額」而非「單純消費總和」，這個 TRANSFER 被忽略的處理方式可能是「本期支出」與「餘額」兩個數字語意上不完全對齊的另一個原因，值得使用者確認產品需求後再決定是否要修正。
