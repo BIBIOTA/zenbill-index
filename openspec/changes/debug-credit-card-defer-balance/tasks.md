@@ -28,4 +28,6 @@
 
 ## Optional artifacts
 - [ ] PlantUML diagrams (spec-driven-dev:writing-uml)
+  - deferred: 純後端計算邏輯修正，無需序列圖/狀態圖輔助說明
 - [ ] Figma designs (spec-driven-dev:writing-figma)
+  - deferred: 未變更任何 UI/畫面，純後端餘額計算修正
