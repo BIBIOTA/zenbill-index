@@ -334,6 +334,10 @@ export interface SharedExpense {
   partner_paid_amount: number
   settled_at: string | null
   source_type: string
+  /** Who wrote this row: 'user' or 'agent'. Absent on responses predating agent tokens. */
+  created_by_actor?: string
+  /** Who soft-deleted this row, when it has been deleted. */
+  deleted_by_actor?: string
   created_at: string
   updated_at: string
 }
