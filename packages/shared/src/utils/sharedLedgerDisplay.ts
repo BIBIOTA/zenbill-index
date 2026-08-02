@@ -1,4 +1,4 @@
-import type { SharedLedger } from '../types'
+import type { SharedExpense, SharedLedger } from '../types'
 
 type SharedLedgerParty = 'owner' | 'partner'
 
@@ -40,4 +40,31 @@ export function resolveSharedExpensePayerName(
   if (normalized === 'owner') return getSharedLedgerPartyDisplayName(ledger, 'owner')
   if (normalized === 'partner') return getSharedLedgerPartyDisplayName(ledger, 'partner')
   return payerName
+}
+
+/**
+ * Label for an expense an AI agent recorded.
+ *
+ * Shared so the app and the web read identically; a marker that differs
+ * between the two is worse than none, because it teaches the user to look for
+ * the wrong thing on the other device.
+ */
+export const AGENT_RECORDED_LABEL = '🤖 Agent'
+
+/**
+ * Whether this expense was recorded by an agent rather than by a person.
+ *
+ * Agent bookkeeping is fast and low-friction, which is exactly why these rows
+ * are the ones worth glancing over: they can land without the user having
+ * watched them land.
+ *
+ * Anything that is not explicitly an agent row is treated as a person's —
+ * historic rows backfilled to 'user', and responses from an API predating the
+ * field, must both stay unbadged. A badge on every old row would carry no
+ * information at all.
+ */
+export function isAgentRecordedExpense(
+  expense: Pick<SharedExpense, 'created_by_actor'> | null | undefined,
+): boolean {
+  return expense?.created_by_actor === 'agent'
 }
