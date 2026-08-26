@@ -11,6 +11,7 @@ import type {
   CreateSharedExpenseInput,
   UpdateSharedLedgerInput,
 } from '../types/index.ts'
+import type { PartnerPaymentMethodList } from '../utils/sharedLedgerDisplay.ts'
 
 // === Ledger CRUD ===
 
@@ -30,6 +31,36 @@ export function useSharedLedger(id: string | undefined) {
     queryFn: () =>
       api.get<ApiResponse<SharedLedger>>(`/shared-ledgers/${id}`).then((r) => r.data),
     enabled: !!id,
+  })
+}
+
+/**
+ * The payment-method options this ledger offers, read live from its Google
+ * Sheet on every mount.
+ *
+ * Deliberately uncached: the user maintains this list on the Sheet and expects
+ * an edit there to show up the next time they open the form, which is worth
+ * more than saving a round-trip on an optional field.
+ *
+ * The endpoint reports a failed read as an unavailable list rather than an
+ * error, so a caller reads `isLoading` for "still fetching" and
+ * `data.available` for "there is a list to offer". Retries are off: this field
+ * is optional, and a form that keeps waiting on Google is worse than one that
+ * quietly gives up on a nicety.
+ */
+export function useSharedLedgerPaymentMethods(ledgerId: string | undefined) {
+  const api = getApiClient()
+  return useQuery({
+    queryKey: ['shared-ledgers', ledgerId, 'payment-methods'],
+    queryFn: () =>
+      api
+        .get<ApiResponse<PartnerPaymentMethodList>>(`/shared-ledgers/${ledgerId}/payment-methods`)
+        .then((r) => r.data),
+    enabled: !!ledgerId,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    retry: false,
   })
 }
 

@@ -334,6 +334,8 @@ export interface SharedExpense {
   partner_paid_amount: number
   settled_at: string | null
   source_type: string
+  /** Which instrument the partner paid with. A free-text label, not an account reference. */
+  partner_payment_method?: string
   /** Who wrote this row: 'user' or 'agent'. Absent on responses predating agent tokens. */
   created_by_actor?: string
   /** Who soft-deleted this row, when it has been deleted. */
@@ -355,6 +357,7 @@ export interface CreateSharedExpenseInput {
   payment_account_id?: string
   merchant_id?: string
   personal_category_id?: string
+  partner_payment_method?: string
 }
 
 export interface SharedLedgerSummary {

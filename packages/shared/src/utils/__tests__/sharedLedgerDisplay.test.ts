@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   getSharedLedgerPartyDisplayName,
   isAgentRecordedExpense,
+  getPartnerPaymentMethodLabel,
+  resolvePartnerPaymentMethodField,
   resolveSharedExpensePayerName,
+  shouldShowPartnerPaymentMethodField,
 } from '../sharedLedgerDisplay'
+import type { PartnerPaymentMethodList } from '../sharedLedgerDisplay'
 import type { SharedLedger } from '../../types'
 
 describe('shared ledger display helpers', () => {
@@ -42,5 +46,135 @@ describe('agent-recorded expenses', () => {
     expect(isAgentRecordedExpense({} as { created_by_actor: string })).toBe(false)
     expect(isAgentRecordedExpense(null)).toBe(false)
     expect(isAgentRecordedExpense(undefined)).toBe(false)
+  })
+})
+
+describe('partner payment method field', () => {
+  const ledger = {
+    owner_aliases: ['Yuki'],
+    partner_aliases: [],
+    partner_name: 'Zumi',
+  } as SharedLedger
+
+  const list = (methods: string[]): PartnerPaymentMethodList => ({
+    available: true,
+    payment_methods: methods,
+  })
+  const unavailable: PartnerPaymentMethodList = {
+    available: false,
+    payment_methods: [],
+    reason: 'read_failed',
+  }
+
+  it('shows the field when the partner paid and the ledger offers a list', () => {
+    expect(
+      shouldShowPartnerPaymentMethodField(list(['玉山卡']), { partner_paid_amount: 800 }),
+    ).toBe(true)
+  })
+
+  it('shows the field when both parties paid', () => {
+    // The trigger is the partner having spent money, not being the main payer.
+    expect(
+      shouldShowPartnerPaymentMethodField(list(['玉山卡']), { partner_paid_amount: 200 }),
+    ).toBe(true)
+  })
+
+  it('hides the field when the partner paid nothing', () => {
+    expect(
+      shouldShowPartnerPaymentMethodField(list(['玉山卡']), { partner_paid_amount: 0 }),
+    ).toBe(false)
+  })
+
+  it('hides the field when the ledger offers no list', () => {
+    // An empty list and a failed read both mean there is nothing to pick from.
+    expect(shouldShowPartnerPaymentMethodField(list([]), { partner_paid_amount: 800 })).toBe(false)
+    expect(shouldShowPartnerPaymentMethodField(unavailable, { partner_paid_amount: 800 })).toBe(
+      false,
+    )
+    expect(shouldShowPartnerPaymentMethodField(undefined, { partner_paid_amount: 800 })).toBe(false)
+  })
+
+  it('labels the field with the partner display name', () => {
+    expect(getPartnerPaymentMethodLabel(ledger)).toBe('Zumi 付款方式')
+  })
+
+  it('falls back to the default party name when the ledger names no partner', () => {
+    expect(getPartnerPaymentMethodLabel({} as SharedLedger)).toBe('Partner 付款方式')
+  })
+})
+
+describe('partner payment method field state', () => {
+  const paid = { partner_paid_amount: 800 }
+
+  it('is ready with the ledger options once the list arrives', () => {
+    expect(
+      resolvePartnerPaymentMethodField({
+        list: { available: true, payment_methods: ['玉山卡', 'Linepay'] },
+        expense: paid,
+      }),
+    ).toEqual({ kind: 'ready', options: ['玉山卡', 'Linepay'] })
+  })
+
+  it('is loading while the list is still in flight', () => {
+    expect(
+      resolvePartnerPaymentMethodField({ list: undefined, isLoading: true, expense: paid }),
+    ).toEqual({ kind: 'loading' })
+  })
+
+  it('is unavailable when the list could not be read', () => {
+    // A ledger that has a list but cannot reach it right now: say so, rather
+    // than showing an empty dropdown the user would read as "my list is empty".
+    expect(
+      resolvePartnerPaymentMethodField({
+        list: { available: false, payment_methods: [], reason: 'read_failed' },
+        expense: paid,
+      }),
+    ).toEqual({ kind: 'unavailable' })
+    expect(resolvePartnerPaymentMethodField({ failed: true, expense: paid })).toEqual({
+      kind: 'unavailable',
+    })
+  })
+
+  it('is hidden when the ledger has no list to offer at all', () => {
+    // No Sheet, no 付款方式 tab, no sync: this ledger will never have options,
+    // so there is nothing to explain — the field simply does not apply.
+    // 'credential_unavailable' belongs here too: a ledger with no stored Google
+    // credential can never be read, so calling it a temporary outage would
+    // promise a recovery that never comes.
+    for (const reason of [
+      'sheet_not_configured',
+      'tab_not_found',
+      'sync_not_configured',
+      'credential_unavailable',
+    ]) {
+      expect(
+        resolvePartnerPaymentMethodField({
+          list: { available: false, payment_methods: [], reason },
+          expense: paid,
+        }),
+      ).toEqual({ kind: 'hidden' })
+    }
+    expect(
+      resolvePartnerPaymentMethodField({
+        list: { available: true, payment_methods: [] },
+        expense: paid,
+      }),
+    ).toEqual({ kind: 'hidden' })
+  })
+
+  it('is hidden whenever the partner paid nothing, whatever the list did', () => {
+    const none = { partner_paid_amount: 0 }
+    expect(
+      resolvePartnerPaymentMethodField({
+        list: { available: true, payment_methods: ['玉山卡'] },
+        expense: none,
+      }),
+    ).toEqual({ kind: 'hidden' })
+    expect(resolvePartnerPaymentMethodField({ failed: true, expense: none })).toEqual({
+      kind: 'hidden',
+    })
+    expect(
+      resolvePartnerPaymentMethodField({ list: undefined, isLoading: true, expense: none }),
+    ).toEqual({ kind: 'hidden' })
   })
 })

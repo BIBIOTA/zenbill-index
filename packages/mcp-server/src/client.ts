@@ -65,6 +65,7 @@ export interface CreateExpenseArgs {
   split_method: SplitMethod
   owner_amount?: number
   partner_amount?: number
+  partner_payment_method?: string
 }
 
 interface ApiEnvelope<T> {

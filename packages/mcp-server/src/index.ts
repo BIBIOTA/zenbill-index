@@ -141,6 +141,17 @@ async function main() {
         .describe('EQUAL splits in half; FULL_OWNER/FULL_PARTNER assign the whole cost; CUSTOM needs both amounts'),
       owner_amount: z.number().optional().describe('Owner share, CUSTOM only'),
       partner_amount: z.number().optional().describe('Partner share, CUSTOM only'),
+      // Deliberately no list of valid values here: the options live on the
+      // user's Google Sheet and change without this description changing. Only
+      // what the user actually said belongs in this field.
+      partner_payment_method: z
+        .string()
+        .optional()
+        .describe(
+          'Which instrument the PARTNER paid with, only if the user said so explicitly. ' +
+            'Applies only when the partner paid (paid_by_owner false); leave it out for expenses the owner paid. ' +
+            'Never infer or guess one; leave it out when unmentioned.',
+        ),
     },
     async (args) =>
       reply(async () => {
