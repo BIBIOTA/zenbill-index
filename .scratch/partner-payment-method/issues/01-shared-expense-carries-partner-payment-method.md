@@ -18,4 +18,5 @@
 - [x] 傳入不屬於任何清單的任意字串一樣被接受（不做值域驗證）
 - [x] 未傳入時該欄位為空，且拆分金額與連動個人交易的行為與變更前一致
 - [x] 共同支出服務層測試涵蓋「帶值時落到實體上」與「未帶值時其餘行為不變」
+- [x] AutoMigrate 已對 dev DB 執行（`docker exec zenbill_api_dev sh -c "cd /app && go run ./cmd/migrate"`）—— **這一步不會自動發生**：dev 的 `air` 只跑 api，prod 映像也只有 `CMD /app/api`，兩邊的 migrate 都要手動觸發。prod 部署後需 `docker exec zenbill_api_prod /app/migrate`，否則建立共同支出會以 `column "partner_payment_method" does not exist` 回 500
 - [ ] `golangci-lint` 通過 — **未執行：本機未安裝 golangci-lint**。替代驗證：`go build ./...`、`go vet ./internal/...`、`go test ./...` 全數通過
