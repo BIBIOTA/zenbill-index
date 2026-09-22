@@ -39,7 +39,10 @@ export function getBillingCycle(closingDay: number, offset: number = 0): Billing
   }
   const startDate = new Date(startYear, startMonth, closingDay + 1)
 
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  // Format from local date parts: toISOString() converts to UTC, which shifts
+  // local midnight back one day in UTC+ timezones (e.g. Asia/Taipei).
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const shortFmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
 
   return {
