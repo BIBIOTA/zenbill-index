@@ -75,6 +75,9 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      // Deleting a transaction that belongs to a shared expense deletes the
+      // shared expense too.
+      qc.invalidateQueries({ queryKey: ['shared-ledgers'] })
     },
   })
 }

@@ -105,6 +105,16 @@ export interface Transaction {
   merchant?: Merchant
   category?: Category
   account?: Account
+  // Only on the single-transaction read (GET /transactions/:id), and only when
+  // this transaction belongs to a shared expense. Deleting the transaction
+  // deletes that shared expense too; editing it does not propagate.
+  linked_shared_expense?: LinkedSharedExpense
+}
+
+export interface LinkedSharedExpense {
+  id: string
+  ledger_name: string
+  settled: boolean
 }
 
 export interface CreateTransactionInput {
