@@ -168,11 +168,14 @@ export function useCreateSharedExpense(ledgerId: string) {
   return useMutation({
     mutationFn: (input: CreateSharedExpenseInput) =>
       api.post<ApiResponse<SharedExpense>>(`/shared-ledgers/${ledgerId}/expenses`, input),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'expenses'] })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'summary'] })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'receivables'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
+      // 帶入帳帳戶代表同時建立了個人交易；帶發票則代表該發票已標成已處理。
+      if (input.payment_account_id) qc.invalidateQueries({ queryKey: ['transactions'] })
+      if (input.invoice_id) qc.invalidateQueries({ queryKey: ['invoices'] })
     },
   })
 }

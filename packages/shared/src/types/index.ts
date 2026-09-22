@@ -368,6 +368,8 @@ export interface CreateSharedExpenseInput {
   merchant_id?: string
   personal_category_id?: string
   partner_payment_method?: string
+  /** Import this invoice along with the expense. Requires payment_account_id. */
+  invoice_id?: string
 }
 
 export interface SharedLedgerSummary {
