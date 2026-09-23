@@ -406,6 +406,8 @@ export interface Notification {
 export interface CurrencySetting {
   currency_code: string
   multiplier: number
+  /** User-chosen decimal places (0–4); null / absent means use the built-in default. */
+  decimal_places?: number | null
 }
 
 export interface UpdateCurrencySettingsInput {

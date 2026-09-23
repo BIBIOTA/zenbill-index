@@ -7,7 +7,15 @@
  * elsewhere. See openspec change `add-cross-currency-transfer-rate`.
  */
 
+import { roundToCurrency } from './currencyPrecision.ts'
+
 export type CrossCurrencyField = 'source' | 'target' | 'rate'
+
+/** Precision of one side of the transfer; applied to the stored value (`display × multiplier`). */
+export interface CurrencyPrecision {
+  decimals: number
+  multiplier: number
+}
 
 export interface CrossCurrencyInput {
   source: number
@@ -15,6 +23,10 @@ export interface CrossCurrencyInput {
   rate: number
   /** Queue of edited fields; the last two distinct entries drive the computation. */
   lastEdited: CrossCurrencyField[]
+  /** Precision used to round a computed source amount. */
+  sourcePrecision: CurrencyPrecision
+  /** Precision used to round a computed target amount. */
+  targetPrecision: CurrencyPrecision
 }
 
 export interface CrossCurrencyResult {
@@ -23,9 +35,8 @@ export interface CrossCurrencyResult {
   rate: number
 }
 
-function roundTo(value: number, decimals: number): number {
-  const factor = 10 ** decimals
-  return Math.round(value * factor) / factor
+function roundRate(value: number): number {
+  return Math.round(value * 10_000) / 10_000
 }
 
 /** Returns the last two distinct edited fields, preserving recency order. */
@@ -46,22 +57,30 @@ function lastTwoDistinct(lastEdited: CrossCurrencyField[]): CrossCurrencyField[]
  * amount from whichever amount is present. When no usable rate exists, an edited
  * amount plus the other present amount derives the rate.
  *
+ * A computed amount is rounded half-up to its own currency's precision (see
+ * `roundToCurrency`); entered amounts are never rounded, and the rate keeps its
+ * entered/prefilled value. A derived rate is rounded to 4 decimal places.
+ *
  * Returns the values unchanged when the operands needed for a computation are
  * not all greater than zero.
  */
 export function computeCrossCurrencyAmount(input: CrossCurrencyInput): CrossCurrencyResult {
-  const { source, target, rate } = input
+  const { source, target, rate, sourcePrecision, targetPrecision } = input
+  const toSource = (value: number) =>
+    roundToCurrency(value, sourcePrecision.decimals, sourcePrecision.multiplier)
+  const toTarget = (value: number) =>
+    roundToCurrency(value, targetPrecision.decimals, targetPrecision.multiplier)
   const edited = lastTwoDistinct(input.lastEdited)[0] // most recently edited field
 
   if (edited === 'source') {
-    if (source > 0 && rate > 0) return { source, target: roundTo(source / rate, 2), rate }
-    if (source > 0 && target > 0) return { source, target, rate: roundTo(source / target, 4) }
+    if (source > 0 && rate > 0) return { source, target: toTarget(source / rate), rate }
+    if (source > 0 && target > 0) return { source, target, rate: roundRate(source / target) }
   } else if (edited === 'target') {
-    if (target > 0 && rate > 0) return { source: roundTo(target * rate, 2), target, rate }
-    if (target > 0 && source > 0) return { source, target, rate: roundTo(source / target, 4) }
+    if (target > 0 && rate > 0) return { source: toSource(target * rate), target, rate }
+    if (target > 0 && source > 0) return { source, target, rate: roundRate(source / target) }
   } else if (edited === 'rate') {
-    if (rate > 0 && source > 0) return { source, target: roundTo(source / rate, 2), rate }
-    if (rate > 0 && target > 0) return { source: roundTo(target * rate, 2), target, rate }
+    if (rate > 0 && source > 0) return { source, target: toTarget(source / rate), rate }
+    if (rate > 0 && target > 0) return { source: toSource(target * rate), target, rate }
   }
 
   return { source, target, rate }
