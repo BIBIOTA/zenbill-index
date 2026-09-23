@@ -168,3 +168,46 @@ export function resolvePartnerPaymentMethodField(input: {
   }
   return { kind: 'hidden' }
 }
+
+export interface ReceivableEntry {
+  /** The ledger's currency; amounts of different currencies are never added together. */
+  currency: string
+  /** That ledger's `receivable_balance`. */
+  balance: number
+}
+
+export interface ReceivableTotal {
+  currency: string
+  amount: number
+}
+
+/**
+ * Totals what the user is owed, grouped by ledger currency. Only positive balances
+ * count (a negative one is what the user owes), and currencies are never summed
+ * together — the dashboard reports them side by side, the same way per-currency
+ * assets and liabilities are reported.
+ *
+ * `preferred` (the currency to headline, normally the base currency) comes first when
+ * it has a total; the rest follow by amount, descending. Currencies with nothing
+ * outstanding are left out, so a single-currency user sees exactly one entry.
+ */
+export function receivableTotalsByCurrency(
+  entries: ReceivableEntry[],
+  preferred: string,
+): ReceivableTotal[] {
+  const totals = new Map<string, number>()
+  for (const { currency, balance } of entries) {
+    if (!(balance > 0)) continue
+    const code = currency.toUpperCase()
+    totals.set(code, (totals.get(code) ?? 0) + balance)
+  }
+
+  const key = preferred.toUpperCase()
+  return [...totals.entries()]
+    .map(([currency, amount]) => ({ currency, amount }))
+    .sort((a, b) => {
+      if (a.currency === key) return -1
+      if (b.currency === key) return 1
+      return b.amount - a.amount
+    })
+}

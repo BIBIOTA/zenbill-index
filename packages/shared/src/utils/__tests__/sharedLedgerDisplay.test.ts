@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  receivableTotalsByCurrency,
   getSharedLedgerPartyDisplayName,
   isAgentRecordedExpense,
   getPartnerPaymentMethodLabel,
@@ -176,5 +177,58 @@ describe('partner payment method field state', () => {
     expect(
       resolvePartnerPaymentMethodField({ list: undefined, isLoading: true, expense: none }),
     ).toEqual({ kind: 'hidden' })
+  })
+})
+
+describe('receivableTotalsByCurrency', () => {
+  it('sums per currency and never across currencies', () => {
+    expect(
+      receivableTotalsByCurrency(
+        [
+          { currency: 'TWD', balance: 100 },
+          { currency: 'TWD', balance: 50 },
+          { currency: 'USD', balance: 12.34 },
+        ],
+        'TWD',
+      ),
+    ).toEqual([
+      { currency: 'TWD', amount: 150 },
+      { currency: 'USD', amount: 12.34 },
+    ])
+  })
+
+  it('ignores balances the user owes, and ledgers that are settled', () => {
+    expect(
+      receivableTotalsByCurrency(
+        [
+          { currency: 'TWD', balance: -500 },
+          { currency: 'USD', balance: 0 },
+          { currency: 'JPY', balance: 3000 },
+        ],
+        'TWD',
+      ),
+    ).toEqual([{ currency: 'JPY', amount: 3000 }])
+  })
+
+  it('headlines the preferred currency, then orders by amount', () => {
+    const totals = receivableTotalsByCurrency(
+      [
+        { currency: 'USD', balance: 10 },
+        { currency: 'JPY', balance: 90000 },
+        { currency: 'TWD', balance: 1 },
+      ],
+      'TWD',
+    )
+    expect(totals.map((t) => t.currency)).toEqual(['TWD', 'JPY', 'USD'])
+  })
+
+  it('normalises the currency code', () => {
+    expect(receivableTotalsByCurrency([{ currency: 'twd', balance: 5 }], 'TWD')).toEqual([
+      { currency: 'TWD', amount: 5 },
+    ])
+  })
+
+  it('returns nothing when there is nothing outstanding', () => {
+    expect(receivableTotalsByCurrency([], 'TWD')).toEqual([])
   })
 })

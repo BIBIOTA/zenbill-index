@@ -20,6 +20,13 @@ export const CURRENCY_DECIMAL_OVERRIDES: Record<string, number> = {
   VND: 0,
 }
 
+/**
+ * Currency of the aggregated dashboard / report figures. The backend only sums TWD
+ * (non-stock) accounts for monthly stats and the net asset trend, so those totals are
+ * TWD regardless of what other currencies the user holds.
+ */
+export const STATS_CURRENCY = 'TWD'
+
 export const DEFAULT_CURRENCY_DECIMALS = 2
 export const MAX_CURRENCY_DECIMALS = 4
 
