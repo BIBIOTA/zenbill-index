@@ -110,12 +110,12 @@
   - Depends on: 1-5
   - Independence: serial
   - status: complete
-- [ ] 6.2 Manual smoke（Web + APP emulator）
+- [x] 6.2 Manual smoke（Web + APP emulator）
   - Acceptance: 設定頁改 USD 為 0 位並存檔後重新載入仍保留；TWD → JPY 轉帳轉入金額為整數；VND 輸入 50.5 可送出；舊交易只改分類可送出
   - Acceptance: 測試資料刪除且 balance 回到原值
   - Depends on: 6.1
   - Independence: serial
-  - status: pending
+  - status: complete
 - [x] 6.3 更新 `SPEC.md` / `CONTEXT.md` 的幣別精度說明
   - Depends on: 6.2
   - Independence: serial
