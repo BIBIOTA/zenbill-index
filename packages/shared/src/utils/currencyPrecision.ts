@@ -198,3 +198,13 @@ export function amountPrecisionError(check: AmountPrecisionCheck): string | null
     ? `${label}超過 ${currency} 的精度（${rule}）`
     : `${label}超過 ${currency} 的精度：實際金額（輸入 × ${multiplier}）${rule}`
 }
+
+/**
+ * Stored value -> display value, the inverse of the `× multiplier` applied on submit.
+ * `toPrecision` strips the binary float noise a division leaves behind, so a stored
+ * 81821 VND at multiplier 1000 reads as 81.821, not 81.82100000000001.
+ */
+export function toDisplayAmount(stored: number, multiplier: number): number {
+  if (multiplier === 1 || multiplier === 0) return stored
+  return Number((stored / multiplier).toPrecision(FLOAT_TOLERANCE_PRECISION))
+}

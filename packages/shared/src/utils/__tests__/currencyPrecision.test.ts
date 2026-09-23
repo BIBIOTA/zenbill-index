@@ -14,6 +14,7 @@ import {
   isAmountInputWithinPrecision,
   resolveDecimals,
   roundToCurrency,
+  toDisplayAmount,
   validateAmountPrecision,
 } from '../currencyPrecision'
 import type { CurrencySetting } from '../../types'
@@ -288,5 +289,22 @@ describe('amountPrecisionError', () => {
     expect(amountPrecisionError({ ...twd, text: '' })).toBeNull()
     expect(amountPrecisionError({ ...twd, text: 'abc' })).toBeNull()
     expect(amountPrecisionError({ ...twd, text: '100.5', initialText: '' })).not.toBeNull()
+  })
+})
+
+describe('toDisplayAmount', () => {
+  it('is the inverse of the multiplier applied on submit', () => {
+    expect(toDisplayAmount(50500, 1000)).toBe(50.5)
+    expect(toDisplayAmount(81821, 1000)).toBe(81.821)
+    expect(toDisplayAmount(1234, 1)).toBe(1234)
+  })
+
+  it('leaves no float noise behind', () => {
+    expect(String(toDisplayAmount(8.21, 100))).toBe('0.0821')
+    expect(String(toDisplayAmount(1e6 + 1, 3))).not.toMatch(/0000000|9999999/)
+  })
+
+  it('treats a 0 multiplier as no conversion rather than dividing by zero', () => {
+    expect(toDisplayAmount(10, 0)).toBe(10)
   })
 })
