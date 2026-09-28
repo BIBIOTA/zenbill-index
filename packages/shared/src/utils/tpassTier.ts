@@ -30,7 +30,10 @@ export const TPASS_TIERS: Record<TpassTierCategory, TpassTier[]> = {
     { threshold: 2, rewardPercent: 15 },
     { threshold: 4, rewardPercent: 30 },
   ],
-  // 軌道加碼（臺北捷運 + 臺鐵 + 新北捷運）：11 次 → 2%（最高）。
+  // 軌道加碼：11 次 → 2%（最高）。
+  // 官方回饋條件表格標註「各運具分開計算」：臺北捷運、臺鐵、新北捷運三者
+  // 各自累計次數、各自比門檻，所以帶進來的 currentCount 必須是**單一運具**
+  // 的次數（見 bestRailSystemCount），不可以是三者相加。
   rail: [{ threshold: 11, rewardPercent: 2 }],
 }
 
@@ -73,4 +76,20 @@ export function getTpassTierHint(
     isMax: false,
     label: `再 ${remaining} 次達 ${nextTier.rewardPercent}%`,
   }
+}
+
+// 軌道加碼是各運具分開計算，門檻只看單一運具，所以「再 N 次達 2%」這類提示
+// 應以三個運具中次數最高者為準 —— 那是最快能真正拿到 2% 的那一個。
+//
+// 把三者相加後比門檻是錯的：2025-12 的 production 資料是北捷 10 次 + 臺鐵 1 次，
+// 合計 11 次會讓 UI 顯示「已達 2%」，但官方該月的軌道回饋其實是 0。
+export function bestRailSystemCount(
+  summary?: {
+    taipei_metro_count: number
+    tra_count: number
+    new_taipei_metro_count: number
+  },
+): number {
+  if (!summary) return 0
+  return Math.max(summary.taipei_metro_count, summary.tra_count, summary.new_taipei_metro_count)
 }

@@ -448,6 +448,8 @@ export interface TpassSyncResult {
 }
 
 // One official monthly reward summary for a TPASS card.
+// *_green_reward 為 TPASS 2.0（2026-08）新增的「綠色運輸加碼」欄位；
+// 官方語意：官方回饋總計 = 基本回饋 + 綠色運輸加碼（2.0 之前的月份一律為 0）。
 export interface TpassMonthlySummary {
   id: string
   user_id: string
@@ -458,18 +460,23 @@ export interface TpassMonthlySummary {
   short_bus_count: number
   short_bus_amount: number
   short_bus_official_reward: number
+  short_bus_green_reward: number
   intercity_bus_count: number
   intercity_bus_amount: number
   intercity_bus_official_reward: number
+  intercity_bus_green_reward: number
   taipei_metro_count: number
   taipei_metro_amount: number
   taipei_metro_official_reward: number
+  taipei_metro_green_reward: number
   tra_count: number
   tra_amount: number
   tra_official_reward: number
+  tra_green_reward: number
   new_taipei_metro_count: number
   new_taipei_metro_amount: number
   new_taipei_metro_official_reward: number
+  new_taipei_metro_green_reward: number
   rail_count: number
   rail_amount: number
   official_total_reward_amount: number
