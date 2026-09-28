@@ -81,5 +81,5 @@ TPASS 2.0 在官方回饋明細表的**每個運輸群組都新增「綠色運�
 ## Follow-up（未做，需另行決定）
 - **資料回填**：既有月結會在下次同步被官方值覆蓋（含前月的半月快照修正）。
 - **估算缺口**：`TpassRewardService` 不知道綠色運輸加碼，修好後 `calculation_delta_amount` 會出現系統性缺口。官方加碼規則未公布於該頁，不宜臆測。
-- **一次性 harness**：`cmd/tpass_probe`（標記 `[DEBUG-tp9]`，untracked）保留作為部署後驗證，之後刪除。
-- **舊報告的個資**：`archive/2026-06-15-debug-tpass-month-year{,-order}` 兩份在本公開 repo 中含實際卡號末四碼與金額，尚未處理（需改寫 git 歷史）。
+- ~~一次性 harness `cmd/tpass_probe`~~：已於 2026-09-28 部署驗證後刪除（從未進版控）；臨時 dump 點也已還原。
+- **舊報告的個資**：`archive/2026-06-15-debug-tpass-month-year{,-order}` 兩份原含實際卡號末四碼與乘車次數，已於 2026-09-28 一併去識別化（卡A / 卡B）。**注意：git 歷史中的舊版本仍保有原始內容**，徹底移除需改寫歷史並強推，尚未執行。

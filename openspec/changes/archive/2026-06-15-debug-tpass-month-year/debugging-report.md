@@ -6,8 +6,11 @@ Debugger: Claude (claude-opus-4-8)
 > Debugging-only artifact. Records root-cause investigation for the TPASS
 > "幽靈 6 月資料" bug; no spec change yet.
 
+> **本檔已去識別化（2026-09-28）**：卡片以 卡A / 卡B 代稱，乘車次數已移除。
+> 月份順序、年份推斷邏輯與結論皆為實際值。
+
 ## Symptom
-- Reported behavior: 悠遊卡號末四碼 9011 在 2026 年 6 月「沒有乘車紀錄」，TPASS 同步後卻出現了一筆 2026/6 的月份明細，資料來源不明。
+- Reported behavior: 悠遊卡 卡A 在 2026 年 6 月「沒有乘車紀錄」，TPASS 同步後卻出現了一筆 2026/6 的月份明細，資料來源不明。
 - Expected behavior: 2026 年 6 月（當月）不應出現任何明細；該卡若 6 月無乘車，就不該有 6 月資料。
 - Impact: 月份明細年份錯置 → 估算回饋、前端「本月」統計、(user_id, card_id, year, month) 唯一鍵全部受污染。可能影響所有在「查詢當月」有同月份（上一年）資料列的卡片，非單一卡片。
 
@@ -18,7 +21,7 @@ Debugger: Claude (claude-opus-4-8)
   2. 以 `queryDate = 2026-06-16` 呼叫 `ParseMonthlySummaryHTMLWithQueryDate`。
   3. 觀察 month==6 那列被推斷出的年份。
 - Environment: macOS, Go 1.22, `pkg/tpass`（需 CGO flags：leptonica/tesseract）。
-- Test data / record IDs: 卡號末四碼 9011；fixture 查詢日 2026/06/08。
+- Test data / record IDs: 卡A；fixture 查詢日 2026/06/08。
 
 ## Observation Plan
 | Layer | Observation method | Evidence captured |
@@ -51,7 +54,7 @@ func inferMonthlySummaryYear(month int, queryDate *time.Time) int {
 ```
 
 ## Data Flow Trace
-- Symptom observed at: DB / 前端出現卡 9011 的「2026 年 6 月」明細。
+- Symptom observed at: DB / 前端出現卡A 的「2026 年 6 月」明細。
 - First incorrect state found at: `inferMonthlySummaryYear(6, 2026-06)` 回傳 2026。
 - Boundary where expected became actual: 官網滾動視窗中那列其實是 **2025 年 6 月**（官網永不顯示當月＝2026/6）；`<=` 把「month == 當月」歸給今年，年份 −1 沒被套用。
 
@@ -60,7 +63,7 @@ func inferMonthlySummaryYear(month int, queryDate *time.Time) int {
 - Meaningful differences: 既有測試的月份都 **嚴格小於** 查詢月(6)，從未覆蓋「month == 查詢月」這個邊界，正是 bug 藏身處。改成 `<` 後既有測試仍全綠。
 
 ## Hypothesis
-I think the root cause is **`inferMonthlySummaryYear` 的邊界用 `month <= queryDate.Month()`**，because 官網明細頁明文「只能查前月回饋金，當月不顯示」，因此資料列月份等於查詢當月時，必屬**去年**同月；現行 `<=` 卻把它判成今年，使去年 6 月的真實乘車資料被貼上「2026 年 6 月」標籤，看起來像「卡 9011 憑空多出 6 月資料」。資料是真的，只是年份錯置。
+I think the root cause is **`inferMonthlySummaryYear` 的邊界用 `month <= queryDate.Month()`**，because 官網明細頁明文「只能查前月回饋金，當月不顯示」，因此資料列月份等於查詢當月時，必屬**去年**同月；現行 `<=` 卻把它判成今年，使去年 6 月的真實乘車資料被貼上「2026 年 6 月」標籤，看起來像「卡A 憑空多出 6 月資料」。資料是真的，只是年份錯置。
 
 ## Next Action
 - Route to: `spec-driven-dev:test-driven-development`（實作有 approved 行為，屬實作 bug）。
