@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source-path=SCRIPTDIR
 set -euo pipefail
 
 # ============================================================
@@ -82,6 +83,30 @@ if ! gh auth status &>/dev/null; then
     exit 1
 fi
 log "Pre-flight checks passed."
+
+# ============================================================
+# Phase 1.5: Skip if app content unchanged (production only)
+# ============================================================
+# design.md D2/D7: compare the app content hash with the latest
+# recorded release BEFORE creating a tag. Lookup failure ⇒ build.
+
+APP_CONTENT_HASH=""
+if [[ "${BUILD_VARIANT}" != "preview" ]]; then
+    # shellcheck source=lib/app-content-hash.sh
+    source "${SCRIPT_DIR}/lib/app-content-hash.sh"
+    # shellcheck source=lib/release-webhook.sh
+    source "${SCRIPT_DIR}/lib/release-webhook.sh"
+    if APP_CONTENT_HASH="$(app_content_hash "${PROJECT_DIR}")"; then
+        log "App content hash: ${APP_CONTENT_HASH}"
+        if ! release_should_build "${APP_CONTENT_HASH}"; then
+            log "app unchanged (hash ${APP_CONTENT_HASH}), skipping APK build"
+            exit 0
+        fi
+    else
+        APP_CONTENT_HASH=""
+        log "WARN: failed to compute app content hash; building anyway."
+    fi
+fi
 
 # ============================================================
 # Phase 2: Determine version
@@ -292,6 +317,33 @@ else
         else
             log "ERROR: Failed to create release."
             exit 1
+        fi
+    fi
+
+    # ============================================================
+    # Phase 9: Notify backend (record release + push to users)
+    # ============================================================
+    # Failure here never fails the build: the release is already public.
+    # Re-send later with: scripts/notify-release.sh ${NEW_TAG}
+
+    APK_URL="https://github.com/${REPO}/releases/download/${NEW_TAG}/${APK_NAME}"
+    APK_SHA256="$(shasum -a 256 < "${APK_DEST}" || true)"
+    APK_SHA256="${APK_SHA256%% *}"
+    APP_GIT_SHA="$(git -C "${APP_DIR}" rev-parse HEAD 2>/dev/null || echo unknown)"
+    log "APK sha256: ${APK_SHA256}"
+
+    if [[ -z "${APP_CONTENT_HASH}" ]]; then
+        APP_CONTENT_HASH="$(app_content_hash "${PROJECT_DIR}" 2>/dev/null || true)"
+    fi
+
+    if [[ -z "${APP_CONTENT_HASH}" ]]; then
+        log "ERROR: no app content hash; release webhook not sent. Retry with: scripts/notify-release.sh ${NEW_TAG}"
+    else
+        rc=0
+        release_notify "${VERSION}" "${VERSION_CODE}" "${APK_URL}" "${APK_SHA256}" \
+            "${APP_CONTENT_HASH}" "${APP_GIT_SHA}" || rc=$?
+        if [[ "${rc}" -eq 1 ]]; then
+            log "ERROR: release webhook failed for ${NEW_TAG}. Retry with: scripts/notify-release.sh ${NEW_TAG}"
         fi
     fi
 
