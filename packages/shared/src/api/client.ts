@@ -15,9 +15,11 @@ export interface ApiClientConfig {
 
 export class ApiError extends Error {
   code: number
-  constructor(code: number, message: string) {
+  data?: unknown
+  constructor(code: number, message: string, data?: unknown) {
     super(message)
     this.code = code
+    this.data = data
   }
 }
 
@@ -130,7 +132,7 @@ export function createApiClient(config: ApiClientConfig) {
     const json = await res.json()
 
     if (!res.ok) {
-      throw new ApiError(json.code || res.status, json.message || 'Unknown error')
+      throw new ApiError(json.code || res.status, json.message || 'Unknown error', json.data)
     }
 
     return json

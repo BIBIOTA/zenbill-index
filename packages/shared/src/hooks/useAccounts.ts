@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
-import type { Account, ApiResponse, CreateAccountInput, BuyStockInput, SellStockInput, StockSearchResult } from '../types/index.ts'
+import { ApiError } from '../api/client.ts'
+import type { Account, AccountBlockReason, ApiResponse, CreateAccountInput, BuyStockInput, SellStockInput, StockSearchResult } from '../types/index.ts'
 
 const typeOrder: Record<string, number> = { CASH: 0, BANK: 1, CRYPTO: 2, STOCK: 3, CREDIT: 4 }
 
@@ -58,6 +59,37 @@ export function useDeleteAccount() {
     mutationFn: (id: string) => api.delete<ApiResponse<null>>(`/accounts/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
   })
+}
+
+export function useArchiveAccount() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<ApiResponse<Account>>(`/accounts/${id}/archive`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  })
+}
+
+export function useUnarchiveAccount() {
+  const api = getApiClient()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<ApiResponse<Account>>(`/accounts/${id}/unarchive`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
+  })
+}
+
+/** Extracts the block reasons from a 409 archive / delete error; empty for any other error. */
+export function getAccountBlockReasons(err: unknown): AccountBlockReason[] {
+  if (!(err instanceof ApiError) || err.code !== 409) return []
+  const data = err.data as { reasons?: AccountBlockReason[] } | undefined
+  return data?.reasons ?? []
+}
+
+export function isAccountArchived(account: Pick<Account, 'archived_at'>): boolean {
+  return account.archived_at != null
 }
 
 export function useRefreshStockPrices() {

@@ -32,8 +32,25 @@ export interface Account {
   day_change: number | null
   day_change_percent: number | null
   last_price_at: string | null
+  archived_at: string | null
   created_at: string
   updated_at: string
+}
+
+// Returned in `data.reasons` of the 409 response when archive / delete is blocked.
+export type AccountBlockReasonCode =
+  | 'NON_ZERO_BALANCE'
+  | 'NON_ZERO_SHARES'
+  | 'AUTO_PAY_ENABLED'
+  | 'AUTO_PAY_SOURCE'
+  | 'MERCHANT_DEFAULT'
+  | 'TPASS_LINKED'
+  | 'NOT_ARCHIVED'
+  | 'HAS_TRANSACTIONS'
+
+export interface AccountBlockReason {
+  code: AccountBlockReasonCode
+  message: string
 }
 
 export interface CreateAccountInput {
