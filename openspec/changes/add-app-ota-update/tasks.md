@@ -20,7 +20,7 @@
 - [x] 2.2 `build-apk.sh` Phase 1.5：hash 相同就 skip；查詢失敗照常打包；preview 不受影響
 - [x] 2.3 `build-apk.sh` Phase 9：算 APK sha256，POST webhook，重試 3 次，失敗記 ERROR，仍 exit 0
 - [x] 2.4 `scripts/notify-release.sh vX.Y.Z`：補發用
-- [ ] 2.5 （使用者手動）Mac mini 建立 `~/.config/zenbill/release.env`（`ZENBILL_RELEASE_WEBHOOK_SECRET=...`，chmod 600），
+- [x] 2.5 Mac mini 建立 `~/.config/zenbill/release.env`（`ZENBILL_RELEASE_WEBHOOK_SECRET=...`，chmod 600），
       並在 `backend/.env.prod` 加上同一個值
 
 ## 3. App（app/ repo）
@@ -35,7 +35,8 @@
 
 - [x] 4.1 本機：手動 POST webhook → 確認第一筆不推播、第二筆會推播、重送不重複
       （2026-10-04 以臨時 DB `zenbill_ota_e2e` + scripts 函式 E2E 驗證，含只推給有 token 的使用者）
-- [ ] 4.2 模擬器：裝舊 versionCode → 跳 modal → 更新 → 系統安裝器；竄改 sha256 → 出現 fallback
-- [ ] 4.3 只改 backend 並 push → 確認 deploy.log 出現 skip、沒有新 tag
-      （已用臨時 DB＋worktree API 驗證 skip 判斷；真實 push 待上線時確認）
-- [ ] 4.4 第一個含更新器的版本手動發給使用者安裝
+- [x] 4.2 模擬器：裝舊 versionCode → 跳 modal → 更新 → 系統安裝器；竄改 sha256 → 出現 fallback
+      （2026-10-04 Pixel_7：modal、稍後不再跳、新版再跳、下載＋驗證＋安裝成功、sha 不符刪檔＋錯誤＋瀏覽器退路；推播點擊導頁未實測）
+- [x] 4.3 只改 backend 並 push → 確認 deploy.log 出現 skip、沒有新 tag
+      （2026-10-04 root push 實測：`app unchanged ... skipping APK build`）
+- [ ] 4.4 第一個含更新器的版本手動發給使用者安裝（v1.0.57 已發布，prod 已記錄為第一筆、未推播）
