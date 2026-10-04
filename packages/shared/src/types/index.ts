@@ -405,7 +405,7 @@ export interface InviteInfo {
 }
 
 // === Notifications ===
-export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SHARED_EXPENSE_DELETED' | 'SETTLEMENT_CREATED'
+export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SHARED_EXPENSE_DELETED' | 'SETTLEMENT_CREATED' | 'APP_UPDATE'
 
 export interface Notification {
   id: string
@@ -553,4 +553,16 @@ export interface TpassAccountSection {
   remaining_ride_count_to_next_threshold: number
   previous_month_reward_amount: number
   current_month_estimated_reward_amount: number
+}
+
+// === App release (OTA update) ===
+// GET /app/latest-version (public, no auth). 404 when no release recorded yet.
+export interface AppRelease {
+  version: string // "1.0.57"
+  version_code: number // MAJOR*10000 + MINOR*100 + PATCH
+  apk_url: string
+  apk_sha256: string // lowercase hex
+  content_hash: string // app build-input hash; used by build-apk.sh to skip unchanged builds
+  min_supported_version_code: number | null // reserved, not enforced yet
+  released_at: string // RFC3339
 }
