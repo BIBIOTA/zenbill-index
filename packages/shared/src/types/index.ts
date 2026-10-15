@@ -323,6 +323,27 @@ export interface MonthlyNetAsset {
   net_asset: number
 }
 
+/**
+ * `GET /accounts/credit-card-dues` 的單筆：已結帳、尚未過繳款日的信用卡上期帳單。
+ * 日期皆為 `YYYY-MM-DD`。後端依 `due_date` 升冪排序。
+ */
+export interface CreditCardDue {
+  account_id: string
+  name: string
+  currency: string
+  /** 上期帳單週期起日（含） */
+  cycle_start: string
+  /** 上期帳單週期迄日＝結帳日（含） */
+  cycle_end: string
+  /** 繳款截止日 */
+  due_date: string
+  /** 上期應繳（EXPENSE/INCOME/SETTLEMENT 淨額，TRANSFER 不計，含延期處理） */
+  amount_due: number
+  /** 結帳日次日起轉入此卡的 TRANSFER 加總 */
+  amount_paid: number
+  auto_pay_enabled: boolean
+}
+
 // === Shared Ledger ===
 export type SplitMethod = 'EQUAL' | 'FULL_OWNER' | 'FULL_PARTNER' | 'CUSTOM'
 export type ExpenseCategory = 'food' | 'transport' | 'accommodation' | 'ticket' | 'supplies' | 'settlement' | 'other'
