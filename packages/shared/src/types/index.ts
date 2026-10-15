@@ -295,9 +295,26 @@ export interface CategorySummary {
   total: number
 }
 
+/** 本月某一非台幣幣別的支出與收入（非股票帳戶）。 */
+export interface CurrencyMonthSummary {
+  currency: string
+  expense: number
+  income: number
+}
+
+/** 本月至今 vs 上月同期的台幣支出。 */
+export interface MTDComparison {
+  current_mtd_expense: number
+  previous_mtd_expense: number
+}
+
 export interface TransactionStats {
   monthly: MonthlySummary[]
   current_month_categories: CategorySummary[]
+  /** 舊版後端沒有此欄位；讀取請用 `otherCurrencyAmounts()`。 */
+  current_month_other_currencies?: CurrencyMonthSummary[]
+  /** 舊版後端沒有此欄位；缺少時不顯示同期比較。 */
+  mtd_comparison?: MTDComparison
 }
 
 // === Net Asset Trend ===
