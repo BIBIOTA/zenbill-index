@@ -88,8 +88,20 @@ export function getAccountBlockReasons(err: unknown): AccountBlockReason[] {
   return data?.reasons ?? []
 }
 
-export function isAccountArchived(account: Pick<Account, 'archived_at'>): boolean {
+export function isAccountArchived(account: { archived_at?: string | null }): boolean {
   return account.archived_at != null
+}
+
+/**
+ * 「選帳戶」或總覽加總時用：排除已封存帳戶，保留原順序。`keepIds` 內的帳戶即使已封存仍保留
+ * （編輯既有交易時，目前選中的帳戶必須還看得到）。舊版 API 沒有 `archived_at` 時視為未封存。
+ */
+export function selectableAccounts<T extends { id: string; archived_at?: string | null }>(
+  accounts: T[],
+  keepIds: Array<string | null | undefined> = [],
+): T[] {
+  const keep = new Set(keepIds.filter((id): id is string => !!id))
+  return accounts.filter((a) => !isAccountArchived(a) || keep.has(a.id))
 }
 
 export function useRefreshStockPrices() {
