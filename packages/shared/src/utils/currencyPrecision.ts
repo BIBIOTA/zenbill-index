@@ -215,3 +215,15 @@ export function toDisplayAmount(stored: number, multiplier: number): number {
   if (multiplier === 1 || multiplier === 0) return stored
   return Number((stored / multiplier).toPrecision(FLOAT_TOLERANCE_PRECISION))
 }
+
+/**
+ * Display value -> stored value (`× multiplier`), the inverse of `toDisplayAmount`.
+ * Strips the float noise the multiplication leaves (0.07 × 100 -> 7, not 7.000000000000001).
+ * With `decimals`, also rounds to the stored precision (half away from zero), so callers
+ * that already validated precision get an exact value. A 0 multiplier means no conversion.
+ */
+export function toStoredAmount(display: number, multiplier: number, decimals?: number): number {
+  const stored = multiplier === 0 ? display : display * multiplier
+  if (decimals != null) return roundToCurrency(stored, decimals)
+  return stripFloatError(stored) + 0 // + 0 normalizes -0 to 0
+}

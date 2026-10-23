@@ -1,6 +1,6 @@
 ---
 name: credit-card-statement-reconcile
-description: Use when reconciling a bank credit card statement against ZenBill records — triggers on "對帳", "信用卡帳單", "核對帳單", "credit card statement", "statement reconcile", "比對帳單", "帳單對帳", or requests to find missing/incorrect credit card transactions, or to record card cashback/回饋 into ZenBill.
+description: Use when reconciling a bank credit card statement line by line against ZenBill transactions — triggers on "對帳", "核對帳單", "比對帳單", "帳單對帳", "statement reconcile", or requests to find missing/incorrect credit card transactions, or to record card cashback/回饋 into ZenBill. Saving only the statement's 應繳總額 (匯入帳單/存帳單) is credit-card-statement-import.
 ---
 
 # Credit Card Statement Reconciliation
@@ -17,7 +17,7 @@ description: Use when reconciling a bank credit card statement against ZenBill r
 ## Overview
 
 核心是「以銀行帳單為真實來源 (source of truth)，找出 ZenBill 的差異」。流程：
-信件找帳單 PDF → 由信件內容判定密碼規則 → 問使用者密碼 → 解密並抽取帳單明細 → 查 ZenBill 該卡同期交易 → 比對差異 → 回饋另外處理。
+信件找帳單 PDF → 由信件內容判定密碼規則 → 問使用者密碼 → 解密並抽取帳單明細 → 查 ZenBill 該卡同期交易 → 比對差異 → 回饋另外處理 → 問要不要把這期帳單存起來。
 
 ## Prerequisites
 
@@ -44,6 +44,7 @@ description: Use when reconciling a bank credit card statement against ZenBill r
 6. 查 ZenBill：該卡 account_id + 帳單週期日期範圍的交易
 7. 比對：列出「ZenBill 缺漏」「金額/日期不符」的項目
 8. 若帳單有回饋 → 詢問使用者要如何記入 ZenBill，再記錄
+9. 問使用者要不要把這期帳單存起來（應繳總額等欄位 → credit_card_statements）
 ```
 
 ### Step 1 — 鎖定卡片
@@ -59,47 +60,9 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 
 `payment_due_day` 是繳款日，可協助推算帳單週期。
 
-### Step 2 — 找帳單信件（gws）
+### Step 2–5 — 取得帳單文字
 
-```bash
-gws gmail users messages list --params '{"userId":"me","q":"<銀行> 信用卡 電子帳單 after:YYYY/MM/DD before:YYYY/MM/DD has:attachment","maxResults":5}'
-```
-
-調整 `q`：用寄件者網域（如 `from:sinopac.com`）+ 主旨關鍵字更精準。找到後取信件內文：
-
-```bash
-gws gmail users messages get --params '{"userId":"me","id":"<msgId>","format":"full"}'
-```
-
-附件下載：用 `gws gmail users messages attachments get`，或從信件取得 `attachmentId` 後存檔成 PDF。
-
-> ⚠️ **帳單分兩種：銀行帳單 vs 信用卡帳單，別拿錯。**
-> 銀行寄的「電子對帳單／電子帳單」可能是 **存款帳戶對帳單（銀行帳單）**，也可能是 **信用卡帳單**，兩者主旨和寄件者常很像，但內容、密碼規則、對帳目標完全不同：
-> - **信用卡帳單** → 比對 `accounts.type='CREDIT'`，內容是各筆刷卡消費 → **本 skill 的目標**。
-> - **銀行帳單** → 對應 `accounts.type='BANK'`，內容是存提匯款 → 不是這裡要對的東西。
-> - 有些銀行（如中國信託「電子對帳單」）會把名下**多張卡甚至存款帳戶整合成一份 PDF**；解密後務必先確認抽到的是信用卡明細區塊，再開始比對。
->
-> **判別方式：** 先看主旨／寄件者（「信用卡帳單」vs「存款／綜合對帳單」），仍不確定時，解密後讀 PDF 開頭的標題與欄位（有「交易日／入帳日／應繳金額」= 信用卡；有「存入／支出／結餘」= 銀行帳戶）。拿錯就會把整份對帳對到錯的 ZenBill 帳戶。
-
-> 主旨關鍵字參考：信用卡 → `信用卡帳單`／`信用卡電子帳單`；綜合或存款 → `電子對帳單`／`綜合對帳單`／`存款對帳單`（需進一步確認內容）。
-
-### Step 3 — 判定密碼規則（**讀信件，不要猜**）
-
-台灣各家規則不同，且**信件內文一定會載明**。常見：身分證字號（部分碼）+ 生日、卡號末幾碼、出生年月日等。
-從 Step 2 信件內文擷取規則，**原文呈現給使用者**，例如：「此 PDF 密碼為 身分證字號後四碼 + 西元出生月日（共 8 碼）」。
-
-### Step 4 — 詢問使用者密碼（硬規則）
-
-**絕不自行組合或猜測密碼。** 把信件寫明的規則讀給使用者聽，請使用者提供密碼本身（或組成密碼所需的數值），由使用者確認。密碼是敏感資料，僅用於本次解密，勿寫入任何檔案或 log。
-
-### Step 5 — 解密 + 抽取明細
-
-```bash
-# 直接帶 user password 解密並輸出純文字
-pdftotext -upw '<密碼>' -layout statement.pdf -
-```
-
-`-layout` 保留表格欄位對齊，較易抽出「交易日 / 入帳日 / 金額 / 商家」。表格抽取困難時改用 `pdf` skill（pdfplumber）。
+照 [`fetch-statement.md`](fetch-statement.md) 的 A–D 做：找信（**先確認是信用卡帳單，不是銀行帳單**）→ 從信件讀密碼規則 → **向使用者要密碼，絕不猜** → `pdftotext -upw … -layout` 抽文字。完成條件寫在該檔開頭。
 抽出後整理成結構化清單：`{date, amount, merchant}`。
 
 ### Step 6 — 查 ZenBill 同期交易
@@ -139,13 +102,19 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 
 依使用者選擇，用 `transactions.POST`（需 JWT）或直接寫 DB 建立交易。建立前覆述金額/日期/帳戶給使用者確認。
 
+### Step 9 — 存成帳單
+
+對帳結束後問使用者：「要不要把這期帳單存起來？」（存進 `credit_card_statements`，總覽和帳戶頁的應繳就會以帳單為準。）
+同意 → 用手上已解密的帳單文字，照 `.claude/skills/credit-card-statement-import/SKILL.md` 的 Step 3–7 做（抽欄位 → 算 `cycle_end` → 列表確認 → 寫入 → 印差額），不必重新找信或問密碼。
+不同意 → 結束。
+
 ## Quick Reference
 
 | 需求 | 指令 |
 |------|------|
 | 找信用卡帳戶 | 見 Step 1 SQL |
 | 搜帳單信件 | `gws gmail ... messages list -q "..."` |
-| 解密抽文字 | `pdftotext -upw '<pwd>' -layout f.pdf -` |
+| 找信／密碼／解密 | [`fetch-statement.md`](fetch-statement.md) |
 | 查同期交易 | `scripts/reconcile.py` 或 Step 6 SQL |
 
 ## Common Mistakes
