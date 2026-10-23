@@ -30,3 +30,6 @@ export function computeCycleNetAmountDue(transactions: CycleExpenseTransaction[]
   const netChange = transactions.reduce((sum, tx) => sum + effectiveAmount(tx), 0)
   return -netChange
 }
+
+/** 本期消費（CONTEXT.md「本期消費」）；與 `computeCycleNetAmountDue` 相同，僅是對齊新詞彙的別名。 */
+export const computeCycleSpending = computeCycleNetAmountDue

@@ -335,13 +335,102 @@ export interface CreditCardDue {
   cycle_start: string
   /** 上期帳單週期迄日＝結帳日（含） */
   cycle_end: string
-  /** 繳款截止日 */
+  /** 繳款截止日；有帳單且帳單印有繳款日時用帳單的，否則依 `payment_due_day` 推算 */
   due_date: string
-  /** 上期應繳（EXPENSE/INCOME/SETTLEMENT 淨額，TRANSFER 不計，含延期處理） */
+  /**
+   * 上期應繳總額：有帳單時是帳單上的數字（確定），否則是 `本期消費 + 結轉`（預估）。
+   * 見 `amount_due_source`。
+   */
   amount_due: number
+  /** `amount_due` 的來源：`statement`＝確定（有帳單）、`estimate`＝預估 */
+  amount_due_source: CreditCardAmountDueSource
+  /** 帳單上的最低應繳；沒有帳單或帳單沒填時為 null */
+  minimum_due: number | null
   /** 結帳日次日起轉入此卡的 TRANSFER 加總 */
   amount_paid: number
   auto_pay_enabled: boolean
+}
+
+/** 應繳總額的來源：`statement`＝確定（以帳單為準）、`estimate`＝預估（本期消費 + 結轉）。 */
+export type CreditCardAmountDueSource = 'statement' | 'estimate'
+
+/** 帳單是怎麼寫進來的：`manual`＝App/Web 手動填寫、`skill`＝匯入 skill。 */
+export type CreditCardStatementSource = 'manual' | 'skill'
+
+/**
+ * 帳單原始欄位（`credit_card_statements` 一列）。日期皆為 `YYYY-MM-DD`，金額是儲存值。
+ * `cycle_end` 是 ZenBill 依 `closing_day` 算出的週期結束日，不是銀行印的結帳日（那是 `statement_date`）。
+ */
+export interface CreditCardStatement {
+  id: string
+  cycle_end: string
+  /** 本期應繳總額 */
+  amount_due: number
+  minimum_due: number | null
+  /** 銀行印的繳款截止日；有值時覆蓋 `payment_due_day` 推算的日期 */
+  due_date: string | null
+  /** 銀行印的結帳日，只用來顯示 */
+  statement_date: string | null
+  previous_balance: number | null
+  payments_credited: number | null
+  new_charges: number | null
+  source: CreditCardStatementSource
+  note: string | null
+  /** RFC3339 */
+  created_at: string
+  /** RFC3339 */
+  updated_at: string
+}
+
+/**
+ * `GET /accounts/:id/statements/:cycle_end` 與 `GET /accounts/:id/statements/latest-closed` 的 `data`，
+ * PUT 也回傳同一格式。日期皆為 `YYYY-MM-DD`。
+ */
+export interface CreditCardStatementView {
+  account_id: string
+  currency: string
+  /** 週期起日（含） */
+  cycle_start: string
+  /** 週期結束日（含），ZenBill 依 `closing_day` 算出 */
+  cycle_end: string
+  /** 今天（Asia/Taipei）晚於 `cycle_end`；未結帳的期數前端只用 `cycle_net` */
+  is_closed: boolean
+  /** 繳款截止日：帳單的 `due_date`，沒有時依 `payment_due_day` 推算 */
+  due_date: string
+  /** 本期消費（EXPENSE − INCOME − SETTLEMENT，套用延到下期，TRANSFER 不計） */
+  cycle_net: number
+  /** 結轉：前一期帳單應繳 − 前一期繳款期間已繳；前一期沒有帳單時為 0。可為負（溢繳） */
+  carryover: number
+  /** 預估應繳＝`cycle_net + carryover` */
+  estimated_amount_due: number
+  /** 應繳總額：有帳單時是帳單數字，否則等於 `estimated_amount_due` */
+  amount_due: number
+  amount_due_source: CreditCardAmountDueSource
+  /** 本期繳款期間（`cycle_end` 次日到下一個 `cycle_end`）轉入此卡的 TRANSFER 加總 */
+  amount_paid: number
+  /** `amount_due − amount_paid`；≤ 0 表示已繳清或溢繳 */
+  remaining: number
+  /** 有帳單時是 `statement.amount_due − estimated_amount_due`，否則為 null。≠ 0 是對帳訊號 */
+  diff: number | null
+  /** 帳單原始欄位；沒有帳單時為 null */
+  statement: CreditCardStatement | null
+}
+
+/**
+ * `PUT /accounts/:id/statements/:cycle_end` 的 body。`amount_due` 必填，其他選填且可為 null
+ * （null＝清空該欄）。`source` 由後端固定為 `manual`，不用送。
+ */
+export interface CreditCardStatementInput {
+  amount_due: number
+  minimum_due?: number | null
+  /** `YYYY-MM-DD` */
+  due_date?: string | null
+  /** `YYYY-MM-DD` */
+  statement_date?: string | null
+  previous_balance?: number | null
+  payments_credited?: number | null
+  new_charges?: number | null
+  note?: string | null
 }
 
 // === Shared Ledger ===
