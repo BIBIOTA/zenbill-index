@@ -15,6 +15,7 @@ import {
   resolveDecimals,
   roundToCurrency,
   toDisplayAmount,
+  toStoredAmount,
   validateAmountPrecision,
 } from '../currencyPrecision'
 import type { CurrencySetting } from '../../types'
@@ -306,5 +307,37 @@ describe('toDisplayAmount', () => {
 
   it('treats a 0 multiplier as no conversion rather than dividing by zero', () => {
     expect(toDisplayAmount(10, 0)).toBe(10)
+  })
+})
+
+describe('toStoredAmount', () => {
+  it('is the inverse of toDisplayAmount', () => {
+    expect(toStoredAmount(50.5, 1000)).toBe(50500)
+    expect(toStoredAmount(81.821, 1000)).toBe(81821)
+    expect(toStoredAmount(1234, 1)).toBe(1234)
+    for (const [stored, m] of [[50500, 1000], [81821, 1000], [8.21, 100], [-1350, 1]] as const) {
+      expect(toStoredAmount(toDisplayAmount(stored, m), m)).toBe(stored)
+    }
+  })
+
+  it('leaves no float noise behind', () => {
+    // 0.07 * 100 = 7.000000000000001 in binary floating point
+    expect(toStoredAmount(0.07, 100)).toBe(7)
+    expect(toStoredAmount(1.1, 3)).toBe(3.3)
+  })
+
+  it('rounds to the stored precision when decimals is given', () => {
+    expect(toStoredAmount(12.345, 1, 2)).toBe(12.35)
+    expect(toStoredAmount(1.0005, 1000, 0)).toBe(1001)
+    expect(toStoredAmount(-12.5, 1, 0)).toBe(-13)
+  })
+
+  it('keeps negatives (overpayment) and normalizes -0 to 0', () => {
+    expect(toStoredAmount(-300, 1)).toBe(-300)
+    expect(Object.is(toStoredAmount(-0, 1000), 0)).toBe(true)
+  })
+
+  it('treats a 0 multiplier as no conversion, like toDisplayAmount', () => {
+    expect(toStoredAmount(10, 0)).toBe(10)
   })
 })
