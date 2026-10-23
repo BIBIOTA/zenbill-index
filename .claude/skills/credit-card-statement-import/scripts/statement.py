@@ -20,9 +20,14 @@ Subcommands (all print JSON):
               [--previous-balance X] [--payments-credited X] [--new-charges X]
               [--note TEXT] [--db DB] [--rollback] [--print-sql]
         INSERT … ON CONFLICT (account_id, cycle_end) DO UPDATE, source='skill'.
+        Whole-row replace: optional fields not passed are written as NULL.
         Targeting zenbill_prod first checks zenbill_api_prod's ZENBILL_DB_NAME.
         --rollback runs the write inside BEGIN … ROLLBACK (dry run).
         --print-sql prints the SQL and touches nothing.
+
+    combined  --total X --part NAME=X [--part NAME=X ...]
+        整合帳單: checks that the per-card 本期新增 subtotals add up to the
+        statement's single 應繳總額 and prints the note to store.
 
     self-test
         Checks the cycle arithmetic against cases taken from the Go
@@ -266,10 +271,9 @@ OPTIONAL = ["minimum_due", "due_date", "statement_date", "previous_balance",
 def upsert_sql(account_id: str, cycle_end: date, amount_due: Decimal, opt: dict, rollback: bool) -> str:
     cols = ["amount_due"] + OPTIONAL
     vals = [sql_lit(amount_due)] + [sql_lit(opt.get(c)) for c in OPTIONAL]
-    # amount_due always replaced; an optional field the statement did not show
-    # keeps whatever was stored before (e.g. a manual minimum_due).
-    sets = ["amount_due = EXCLUDED.amount_due"] + [
-        f"{c} = COALESCE(EXCLUDED.{c}, credit_card_statements.{c})" for c in OPTIONAL]
+    # Whole-row replace, like PUT /accounts/:id/statements/:cycle_end: a field
+    # not passed is written as NULL. id, user_id and created_at stay.
+    sets = [f"{c} = EXCLUDED.{c}" for c in cols]
     return f"""BEGIN;
 WITH up AS (
   INSERT INTO credit_card_statements
@@ -306,6 +310,30 @@ def cmd_upsert(args):
         sys.exit(f"expected 1 upserted row, got {rows!r}")
     print(json.dumps({"db": args.db, "rolled_back": args.rollback, "row": rows[0]},
                      ensure_ascii=False, indent=1, default=str))
+
+
+def combined_check(total: Decimal, parts):
+    s = sum((amt for _, amt in parts), Decimal(0))
+    return {
+        "total": str(total), "sum_of_parts": str(s), "difference": str(total - s),
+        "matches": s == total,
+        "parts": [{"card": n, "amount_due": str(a)} for n, a in parts],
+        "note": f"整合帳單，總額 ${total:,}",
+    }
+
+
+def arg_part(s: str):
+    name, sep, amt = s.rpartition("=")
+    if not sep or not name:
+        raise argparse.ArgumentTypeError(f"expected NAME=AMOUNT: {s}")
+    return name, arg_amount(amt)
+
+
+def cmd_combined(args):
+    out = combined_check(args.total, args.part)
+    print(json.dumps(out, ensure_ascii=False, indent=1))
+    if not out["matches"]:
+        sys.exit("subtotals do not add up to the statement total: ask the user which card takes the difference")
 
 
 # ------------------------------------------------------------------ self-test
@@ -362,6 +390,12 @@ def cmd_self_test(_args):
     sql = upsert_sql("00000000-0000-0000-0000-000000000001", d("2026-10-16"), Decimal("11750"),
                      {"note": "O'Brien", "due_date": d("2026-11-01")}, rollback=True)
     assert "'O''Brien'" in sql and sql.rstrip().endswith("ROLLBACK;") and "DATE '2026-11-01'" in sql
+    assert "COALESCE(EXCLUDED" not in sql and "minimum_due = EXCLUDED.minimum_due" in sql
+
+    ok = combined_check(Decimal("12000"), [("A", Decimal("7000")), ("B", Decimal("5000"))])
+    bad = combined_check(Decimal("11700"), [("A", Decimal("7000")), ("B", Decimal("5000"))])
+    assert ok["matches"] and ok["note"] == "整合帳單，總額 $12,000"
+    assert not bad["matches"] and bad["difference"] == "-300"
     print("self-test ok")
 
 
@@ -401,6 +435,11 @@ def main():
     u.add_argument("--rollback", action="store_true")
     u.add_argument("--print-sql", action="store_true")
     u.set_defaults(func=cmd_upsert)
+
+    m = sub.add_parser("combined")
+    m.add_argument("--total", type=arg_amount, required=True)
+    m.add_argument("--part", type=arg_part, action="append", required=True)
+    m.set_defaults(func=cmd_combined)
 
     t = sub.add_parser("self-test")
     t.set_defaults(func=cmd_self_test)

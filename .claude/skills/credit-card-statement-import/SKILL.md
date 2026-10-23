@@ -59,7 +59,13 @@ python3 $S accounts --name 永豐  # 關鍵字過濾
 - 金額照帳單印的數字存（同 `transactions.amount`：台幣、日圓都是整數）。`amount_due` 為負代表溢繳，照存負數。
 - 民國年日期（如 `115/10/18`）加 1911 轉西元。
 - **多幣別帳單**（如幣倍卡、熊本熊卡）：每個幣別各有一組應繳，分別抽，對到同一張卡**幣別相符**的 ZenBill 帳戶（`accounts` 的 `currency`）。不換匯。
-- **一份帳單、多張卡、只有一個應繳總額**（同銀行整合帳單）：ZenBill 每張卡存一列，總額沒辦法直接對應。停下來把帳單上印出的各卡小計給使用者看，由使用者決定怎麼存。
+- **整合帳單**（同一家銀行把多張卡放在一份帳單，只印一個應繳總額）：每張卡各存一列，該卡的 `amount_due` = 帳單上**該卡的本期新增小計**，`note` = `整合帳單，總額 $X`。其他欄位只在帳單有逐卡印出時才填（例如 `new_charges` = 同一個小計）；整份帳單共用的欄位（`due_date`、`statement_date`）每列都填。寫入前驗證小計加總：
+
+  ```bash
+  python3 $S combined --total <應繳總額> --part '<帳戶名>=<小計>' --part '<帳戶名>=<小計>' ...
+  ```
+
+  `matches: false`（exit 1）代表銀行層級有結轉或溢繳：停下來，把總額、各卡小計和差額給使用者看，由使用者決定差額加在哪張卡，加完再跑一次直到 `matches: true`。印出的 `note` 原樣帶進 Step 6 的 `--note`。
 
 ### Step 4 — 對應 `cycle_end`
 
@@ -81,9 +87,9 @@ python3 $S cycle --closing-day <closing_day> --statement-date <statement_date>
 python3 $S estimate --account-id <id> --cycle-end <cycle_end>
 ```
 
-列成一張表給使用者，一張卡一列：帳戶、幣別、`cycle_end`（附銀行結帳日）、`amount_due`、`minimum_due`、`due_date`、`previous_balance`、`payments_credited`、`new_charges`、ZenBill 預估（`estimated_amount_due`）、既有帳單（`statement`，沒有就寫「無」）。
+列成一張表給使用者，一張卡一列（整合帳單的各列放在一起，表格上方寫「整合帳單，總額 $X = 各卡小計加總」，並標出使用者決定的差額落在哪張卡）：帳戶、幣別、`cycle_end`（附銀行結帳日）、`amount_due`、`minimum_due`、`due_date`、`previous_balance`、`payments_credited`、`new_charges`、ZenBill 預估（`estimated_amount_due`）、既有帳單（`statement`，沒有就寫「無」）。
 
-既有帳單存在時要明講會覆蓋；`source = manual` 的是使用者手填的，特別標出來。完成條件：使用者對每一列都明確同意，或指出要改的值。
+寫入是**整列取代**：既有帳單存在時，要明講整列會被這次的值蓋掉，沒抽到的欄位會變成空值。`source = manual` 的是使用者手填的，特別標出來，並列出它和這次不同的欄位。完成條件：使用者對每一列都明確同意，或指出要改的值。
 
 ### Step 6 — 寫入 `zenbill_prod`
 
@@ -93,7 +99,7 @@ python3 $S upsert --account-id <id> --cycle-end <cycle_end> --amount-due <X> \
   [--previous-balance X] [--payments-credited X] [--new-charges X] [--note TEXT]
 ```
 
-- 執行 `INSERT … ON CONFLICT (account_id, cycle_end) DO UPDATE`，`source = 'skill'`，`user_id` 從 `accounts` 帶入。`amount_due` 一律覆蓋；沒帶的選填欄位保留原值。
+- 執行 `INSERT … ON CONFLICT (account_id, cycle_end) DO UPDATE`，`source = 'skill'`，`user_id` 從 `accounts` 帶入。整列取代，和後端 `PUT /accounts/:id/statements/:cycle_end` 一致：沒帶的選填欄位寫成 null；`id`、`created_at` 保留。
 - 寫 `zenbill_prod` 前，script 會先檢查 `zenbill_api_prod` 的 `ZENBILL_DB_NAME`，不是 `zenbill_prod` 就中止。正式 APP 只讀 `zenbill_prod`，寫到 `zenbill_dev` 使用者在 APP 完全看不到，兩庫 UUID 又可能相同，很容易誤判成功（同 reconcile skill 的 Prerequisites）。
 - script 中止的情況：表不存在（後端 migration 還沒套用）、帳戶不是 CREDIT 或沒有 `closing_day`、`cycle_end` 不是該卡合法的週期結束日。照錯誤訊息回報使用者，不要繞過。
 - 想先試跑：加 `--rollback`（在 `BEGIN … ROLLBACK` 裡執行）或 `--print-sql`（只印 SQL）。
