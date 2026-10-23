@@ -4,6 +4,7 @@ import {
   isCrossCurrencyTransfer,
   buildTransferPayloadFields,
   shouldPrefillRate,
+  initialCrossCurrencyEdits,
 } from '../crossCurrency'
 
 const TWO_DP = {
@@ -94,6 +95,30 @@ describe('computeCrossCurrencyAmount', () => {
     })
     expect(result.target).toBeCloseTo(31.6, 1)
     expect(result.source).toBe(1000)
+  })
+
+  it('Entering both amounts derives the rate even with a prefilled rate', () => {
+    // Prefilled rate 32 (TWD per USD); the bank actually debited 3215 TWD and
+    // credited 100 USD. The rate must follow the two actual amounts.
+    const result = computeCrossCurrencyAmount({
+      ...TWO_DP,
+      source: 3215,
+      target: 100,
+      rate: 32,
+      lastEdited: ['source', 'target'],
+    })
+    expect(result).toEqual({ source: 3215, target: 100, rate: 32.15 })
+  })
+
+  it('Editing the rate after both amounts recomputes the older amount', () => {
+    const result = computeCrossCurrencyAmount({
+      ...TWO_DP,
+      source: 3215,
+      target: 100,
+      rate: 32.5,
+      lastEdited: ['target', 'rate'],
+    })
+    expect(result).toEqual({ source: 3250, target: 100, rate: 32.5 })
   })
 
   it('Guard against invalid or insufficient input', () => {
@@ -269,12 +294,22 @@ describe('buildTransferPayloadFields', () => {
 })
 
 describe('shouldPrefillRate', () => {
-  it('Prefill the rate once and respect manual overrides', () => {
+  it('Prefill the rate only while the user has not fixed it', () => {
     // cross-currency + rate not yet manually edited → prefill
-    expect(shouldPrefillRate(true, false)).toBe(true)
+    expect(shouldPrefillRate(true, [])).toBe(true)
+    expect(shouldPrefillRate(true, ['source'])).toBe(true)
     // once the user edits the rate manually → stop overwriting
-    expect(shouldPrefillRate(true, true)).toBe(false)
+    expect(shouldPrefillRate(true, ['source', 'rate'])).toBe(false)
+    // both actual amounts entered → the derived rate must survive
+    expect(shouldPrefillRate(true, ['source', 'target'])).toBe(false)
     // not cross-currency → never prefill
-    expect(shouldPrefillRate(false, false)).toBe(false)
+    expect(shouldPrefillRate(false, [])).toBe(false)
+  })
+})
+
+describe('initialCrossCurrencyEdits', () => {
+  it('Editing an existing cross-currency transfer keeps its actual amounts', () => {
+    expect(initialCrossCurrencyEdits(true)).toEqual(['source', 'target'])
+    expect(initialCrossCurrencyEdits(false)).toEqual([])
   })
 })
