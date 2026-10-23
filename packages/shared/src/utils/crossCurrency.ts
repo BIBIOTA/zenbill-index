@@ -50,12 +50,17 @@ function lastTwoDistinct(lastEdited: CrossCurrencyField[]): CrossCurrencyField[]
 }
 
 /**
- * Recomputes a dependent field from the most recently edited field, anchoring on
- * the exchange rate. Editing an amount recomputes the OTHER amount from the rate
- * (overwriting any stale value, so per-keystroke edits stay in sync and an
- * auto-prefilled rate acts as a usable operand). Editing the rate recomputes an
- * amount from whichever amount is present. When no usable rate exists, an edited
- * amount plus the other present amount derives the rate.
+ * Recomputes the one field the user did not just set. The dependent field is the
+ * one NOT among the two most recently edited distinct fields: editing source then
+ * target derives the rate (so two actual bank amounts win over a prefilled rate),
+ * while editing an amount and the rate recomputes the other amount.
+ *
+ * With only one edited field the rate is the anchor: an edited amount recomputes
+ * the OTHER amount from the rate (overwriting any stale value, so per-keystroke
+ * edits stay in sync and an auto-prefilled rate acts as a usable operand), and an
+ * edited rate recomputes an amount from whichever amount is present. When no
+ * usable rate exists, an edited amount plus the other present amount derives the
+ * rate. Which field is dependent never depends on which fields are empty.
  *
  * A computed amount is rounded half-up to its own currency's precision (see
  * `roundToCurrency`); entered amounts are never rounded, and the rate keeps its
@@ -70,20 +75,29 @@ export function computeCrossCurrencyAmount(input: CrossCurrencyInput): CrossCurr
     roundToCurrency(value, sourcePrecision.decimals, sourcePrecision.multiplier)
   const toTarget = (value: number) =>
     roundToCurrency(value, targetPrecision.decimals, targetPrecision.multiplier)
-  const edited = lastTwoDistinct(input.lastEdited)[0] // most recently edited field
+  const deriveTarget = (): CrossCurrencyResult | undefined =>
+    source > 0 && rate > 0 ? { source, target: toTarget(source / rate), rate } : undefined
+  const deriveSource = (): CrossCurrencyResult | undefined =>
+    target > 0 && rate > 0 ? { source: toSource(target * rate), target, rate } : undefined
+  const deriveRate = (): CrossCurrencyResult | undefined =>
+    source > 0 && target > 0 ? { source, target, rate: roundRate(source / target) } : undefined
 
-  if (edited === 'source') {
-    if (source > 0 && rate > 0) return { source, target: toTarget(source / rate), rate }
-    if (source > 0 && target > 0) return { source, target, rate: roundRate(source / target) }
-  } else if (edited === 'target') {
-    if (target > 0 && rate > 0) return { source: toSource(target * rate), target, rate }
-    if (target > 0 && source > 0) return { source, target, rate: roundRate(source / target) }
-  } else if (edited === 'rate') {
-    if (rate > 0 && source > 0) return { source, target: toTarget(source / rate), rate }
-    if (rate > 0 && target > 0) return { source: toSource(target * rate), target, rate }
+  const edited = lastTwoDistinct(input.lastEdited)
+  let result: CrossCurrencyResult | undefined
+
+  if (edited.length === 2) {
+    if (!edited.includes('rate')) result = deriveRate()
+    else if (!edited.includes('target')) result = deriveTarget()
+    else result = deriveSource()
+  } else if (edited[0] === 'source') {
+    result = deriveTarget() ?? deriveRate()
+  } else if (edited[0] === 'target') {
+    result = deriveSource() ?? deriveRate()
+  } else if (edited[0] === 'rate') {
+    result = deriveTarget() ?? deriveSource()
   }
 
-  return { source, target, rate }
+  return result ?? { source, target, rate }
 }
 
 /**
@@ -147,9 +161,20 @@ export function buildTransferPayloadFields(input: TransferPayloadInput): Transfe
 
 /**
  * Decides whether the form should prefill the rate from the live rate service:
- * only for cross-currency transfers where the user has not manually edited the
- * rate yet. Once the user overrides the rate, prefilling stops.
+ * only for cross-currency transfers where the user has neither manually edited
+ * the rate nor entered both amounts (whose derived rate must not be overwritten).
  */
-export function shouldPrefillRate(isCrossCurrency: boolean, rateManuallyEdited: boolean): boolean {
-  return isCrossCurrency && !rateManuallyEdited
+export function shouldPrefillRate(isCrossCurrency: boolean, lastEdited: CrossCurrencyField[]): boolean {
+  if (!isCrossCurrency || lastEdited.includes('rate')) return false
+  return !(lastEdited.includes('source') && lastEdited.includes('target'))
+}
+
+/**
+ * Edit history a transfer form starts with. An existing cross-currency transfer
+ * holds two actual amounts, so it starts as if both were entered: the stored rate
+ * is not prefilled over, and editing one amount re-derives the rate instead of
+ * overwriting the other amount.
+ */
+export function initialCrossCurrencyEdits(isEditingCrossCurrencyTransfer: boolean): CrossCurrencyField[] {
+  return isEditingCrossCurrencyTransfer ? ['source', 'target'] : []
 }

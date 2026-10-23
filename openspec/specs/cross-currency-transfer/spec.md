@@ -4,7 +4,7 @@
 TBD - created by archiving change add-cross-currency-transfer-rate. Update Purpose after archive.
 ## Requirements
 ### Requirement: System shall provide a shared cross-currency conversion function
-The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that recomputes a dependent field from the most recently edited field, used by both the Web and APP transfer forms, treating the exchange rate as the anchor. When an amount (source or target) is the most recently edited field and the rate is greater than zero, the function SHALL recompute the OTHER amount from that amount and the rate — even if the other amount already holds a stale value (so per-keystroke edits keep the result in sync, and an auto-prefilled rate counts as a usable operand). When the rate is the most recently edited field, the function SHALL recompute an amount from whichever amount is present. When no usable rate is present, an edited amount combined with the other present amount SHALL derive the rate. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
+The system SHALL provide a single shared pure function `computeCrossCurrencyAmount()` in `packages/shared/` that recomputes one dependent field from the user's edit history, used by both the Web and APP transfer forms. The dependent field SHALL be the one NOT among the two most recently edited distinct fields: when the two most recent distinct edits are source and target, the function SHALL derive the rate; when they are an amount and the rate, the function SHALL recompute the other amount. When only one field has been edited, the exchange rate SHALL act as the anchor: an edited amount with a rate greater than zero SHALL recompute the OTHER amount from that amount and the rate — even if the other amount already holds a stale value (so per-keystroke edits keep the result in sync, and an auto-prefilled rate counts as a usable operand); an edited rate SHALL recompute an amount from whichever amount is present; an edited amount with no usable rate combined with the other present amount SHALL derive the rate. The choice of dependent field SHALL NOT depend on which fields are empty. The exchange rate SHALL be defined as `rate = source amount ÷ target amount` (i.e. 1 unit of target currency = rate units of source currency).
 
 A computed amount SHALL be rounded half-up to the precision of its own currency, applied to the stored value: `round(display × multiplier, decimals) / multiplier`, where `decimals` and `multiplier` belong to the source currency for a computed source amount and to the target currency for a computed target amount. Amounts entered by the user SHALL NOT be rounded. The exchange rate SHALL keep its entered or prefilled value and SHALL NOT be re-derived after rounding.
 
@@ -36,13 +36,22 @@ A computed amount SHALL be rounded half-up to the precision of its own currency,
 - **WHEN** source amount and target amount are both greater than zero and the exchange rate is empty
 - **THEN** the function returns the exchange rate computed as `source / target`, rounded to 4 decimal places
 
+#### Scenario: Entering both amounts derives the rate even with a prefilled rate
+- **WHEN** the rate holds a value (e.g. auto-prefilled), and the two most recently edited distinct fields are source and target, both greater than zero
+- **THEN** the function derives the rate as `source / target`, rounded to 4 decimal places
+- **AND** returns both amounts unchanged
+
+#### Scenario: Editing the rate after both amounts recomputes the older amount
+- **WHEN** the two most recently edited distinct fields are target and rate, both greater than zero
+- **THEN** the function recomputes the source amount as `target * rate`, overwriting its previous value
+
 #### Scenario: Compute the empty amount from a prefilled rate
 - **WHEN** the exchange rate is present (e.g. auto-prefilled) and the user has entered only one amount, leaving exactly one of {source, target} empty
 - **THEN** the function computes the empty amount from the present amount and the rate
 - **AND** does not require the rate to have been explicitly edited by the user
 
 #### Scenario: Re-editing an amount recomputes the other from the rate
-- **WHEN** the source amount is the most recently edited field, the rate is greater than zero, and the target amount already holds a stale value from an earlier edit
+- **WHEN** the source amount is the only edited field, the rate is greater than zero, and the target amount already holds a stale value from an earlier edit
 - **THEN** the function recomputes the target amount as `source / rate`, overwriting the stale value
 - **AND** this keeps the result correct across per-keystroke edits rather than freezing at the first computed value
 
@@ -87,13 +96,23 @@ Both the Web (`frontend/`) and APP (`app/`) transfer forms SHALL detect when a T
 - **THEN** the form auto-computes the other amount from the prefilled rate via `computeCrossCurrencyAmount()`
 - **AND** the target amount is not left at zero, so the submitted transfer credits the target account a non-zero amount
 
-#### Scenario: Prefill the rate once and respect manual overrides
-- **WHEN** a cross-currency transfer is detected and the user has not manually edited the rate
+#### Scenario: Entering both actual amounts derives the rate
+- **WHEN** the rate has been auto-prefilled and the user enters the source amount and then the target amount
+- **THEN** the form keeps both entered amounts and replaces the rate with `source / target`
+
+#### Scenario: Prefill the rate only while the user has not fixed it
+- **WHEN** a cross-currency transfer is detected, the user has not manually edited the rate, and the user has not manually entered both amounts
 - **THEN** the form prefills the rate from `useExchangeRate`
-- **AND** once the user manually edits the rate, the form stops overwriting it with the prefilled value
+- **AND** once the user manually edits the rate, or has entered both amounts, the form stops overwriting the rate with the prefilled value
+
+#### Scenario: Editing an existing cross-currency transfer keeps its actual amounts
+- **WHEN** the form opens an existing cross-currency transfer
+- **THEN** the edit history starts as source and target both edited, so the stored rate is not replaced by a prefilled rate
+- **AND** editing either amount derives the rate rather than overwriting the other amount
+- **AND** the edit history is not cleared while the accounts list is still loading
 
 #### Scenario: Reset state when the currency relationship changes
-- **WHEN** account selection changes so that the source and target currencies become equal
+- **WHEN** account selection changes so that a cross-currency transfer becomes one whose source and target currencies are equal
 - **THEN** the form hides the target-amount and exchange-rate inputs
 - **AND** resets the prefill state and the last-edited tracking
 
