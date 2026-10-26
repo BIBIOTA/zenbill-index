@@ -530,6 +530,12 @@ export interface SharedExpense {
   created_by_actor?: string
   /** Who soft-deleted this row, when it has been deleted. */
   deleted_by_actor?: string
+  /** Who last edited this row: 'user' or 'agent'; '' when never edited. Absent on responses predating editing. */
+  updated_by_actor?: string
+  /** The personal transaction recorded in the payment account, when one was chosen. */
+  expense_transaction_id?: string | null
+  /** Whether that linked personal transaction was imported from an invoice (its amount is then locked). */
+  linked_transaction_from_invoice?: boolean
   created_at: string
   updated_at: string
 }
@@ -552,6 +558,16 @@ export interface CreateSharedExpenseInput {
   invoice_id?: string
 }
 
+/**
+ * `PUT /shared-ledgers/:id/expenses/:eid` payload: a full replacement of the
+ * editable fields. The payment account (and the merchant / personal category /
+ * invoice that go with it) cannot be changed by editing.
+ */
+export type UpdateSharedExpenseInput = Omit<
+  CreateSharedExpenseInput,
+  'payment_account_id' | 'merchant_id' | 'personal_category_id' | 'invoice_id'
+>
+
 export interface SharedLedgerSummary {
   total_expenses: number
   owner_share: number
@@ -568,7 +584,7 @@ export interface InviteInfo {
 }
 
 // === Notifications ===
-export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SHARED_EXPENSE_DELETED' | 'SETTLEMENT_CREATED' | 'APP_UPDATE'
+export type NotificationType = 'SHARED_EXPENSE_CREATED' | 'SHARED_EXPENSE_UPDATED' | 'SHARED_EXPENSE_DELETED' | 'SETTLEMENT_CREATED' | 'APP_UPDATE'
 
 export interface Notification {
   id: string

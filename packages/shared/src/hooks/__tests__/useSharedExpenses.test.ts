@@ -66,3 +66,56 @@ describe('package index', () => {
     }
   })
 })
+
+describe('updateSharedExpense', () => {
+  it('PUTs the payload to /shared-ledgers/:id/expenses/:eid', async () => {
+    const calls: Array<[string, unknown]> = []
+    shared.setApiClient({
+      put: async (path: string, body: unknown) => {
+        calls.push([path, body])
+        return { code: 200, message: 'success', data: {} }
+      },
+    } as unknown as shared.ApiClient)
+    const input: shared.UpdateSharedExpenseInput = {
+      date: '2026-10-26', category: 'food', description: '拉麵', payer_name: 'A',
+      paid_by_owner: true, total_amount: 1350, split_method: 'EQUAL',
+    }
+    await shared.updateSharedExpense('L1', 'E1', input)
+    expect(calls).toEqual([['/shared-ledgers/L1/expenses/E1', input]])
+  })
+})
+
+describe('invalidateAfterSharedExpenseUpdate', () => {
+  it('refreshes this ledger\'s expenses, filters, summary, receivables, plus accounts and transactions', async () => {
+    const qc = new QueryClient()
+    const hit = [
+      sharedExpenseKeys.list('L1', 1, 20),
+      sharedExpenseKeys.infinite('L1', { q: 'x' }, 20),
+      sharedExpenseKeys.filterOptions('L1'),
+      ['shared-ledgers', 'L1', 'summary'],
+      ['shared-ledgers', 'L1', 'receivables'],
+      ['accounts'],
+      ['accounts', 'A1'],
+      ['transactions', {}],
+      ['transactions', 'infinite', {}],
+    ]
+    const miss = [sharedExpenseKeys.list('L2', 1, 20), ['shared-ledgers', 'L2', 'summary'], ['invoices']]
+    for (const k of [...hit, ...miss]) qc.setQueryData(k, {})
+    await shared.invalidateAfterSharedExpenseUpdate(qc, 'L1')
+    for (const k of hit) expect(qc.getQueryState(k)?.isInvalidated, JSON.stringify(k)).toBe(true)
+    for (const k of miss) expect(qc.getQueryState(k)?.isInvalidated, JSON.stringify(k)).toBe(false)
+  })
+
+  it('is exported with the lock helpers from the package index', () => {
+    for (const name of [
+      'useUpdateSharedExpense',
+      'updateSharedExpense',
+      'getSharedExpenseLockedFields',
+      'getLockedFieldsFromError',
+      'SHARED_EXPENSE_EDITABLE_FIELDS',
+      'SHARED_EXPENSE_LOCK_REASONS',
+    ]) {
+      expect(shared).toHaveProperty(name)
+    }
+  })
+})

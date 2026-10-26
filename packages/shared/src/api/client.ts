@@ -15,11 +15,15 @@ export interface ApiClientConfig {
 
 export class ApiError extends Error {
   code: number
+  /** The response's `data` field (standard `{code, message, data}` envelope). */
   data?: unknown
-  constructor(code: number, message: string, data?: unknown) {
+  /** The whole parsed error body, for endpoints that put extra fields at the top level (e.g. 409 `{error, locked_fields}`). */
+  body?: unknown
+  constructor(code: number, message: string, data?: unknown, body?: unknown) {
     super(message)
     this.code = code
     this.data = data
+    this.body = body
   }
 }
 
@@ -116,7 +120,12 @@ export function createApiClient(config: ApiClientConfig) {
             await storage.removeRefreshToken()
             onUnauthorized?.()
           }
-          throw new ApiError(retryJson.code || retryRes.status, retryJson.message || 'Unknown error')
+          throw new ApiError(
+            retryJson.code || retryRes.status,
+            retryJson.message || retryJson.error || 'Unknown error',
+            retryJson.data,
+            retryJson,
+          )
         }
 
         return retryRes.json()
@@ -132,7 +141,7 @@ export function createApiClient(config: ApiClientConfig) {
     const json = await res.json()
 
     if (!res.ok) {
-      throw new ApiError(json.code || res.status, json.message || 'Unknown error', json.data)
+      throw new ApiError(json.code || res.status, json.message || json.error || 'Unknown error', json.data, json)
     }
 
     return json

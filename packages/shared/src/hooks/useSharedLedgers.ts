@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type {
   SharedLedger,
@@ -8,6 +8,7 @@ import type {
   ApiResponse,
   CreateSharedLedgerInput,
   CreateSharedExpenseInput,
+  UpdateSharedExpenseInput,
   UpdateSharedLedgerInput,
   SharedExpenseFilters,
   SharedExpenseListResponse,
@@ -265,6 +266,40 @@ export function useCreateSharedExpense(ledgerId: string) {
       if (input.payment_account_id) qc.invalidateQueries({ queryKey: ['transactions'] })
       if (input.invoice_id) qc.invalidateQueries({ queryKey: ['invoices'] })
     },
+  })
+}
+
+/** `PUT /shared-ledgers/:id/expenses/:eid`. A 409 carries `locked_fields`; read it with `getLockedFieldsFromError`. */
+export function updateSharedExpense(ledgerId: string, expenseId: string, input: UpdateSharedExpenseInput) {
+  return getApiClient().put<ApiResponse<SharedExpense>>(`/shared-ledgers/${ledgerId}/expenses/${expenseId}`, input)
+}
+
+/**
+ * Everything an edited expense can change: the ledger's lists, totals and
+ * receivables, and — when the expense is recorded in a payment account — that
+ * personal transaction and the account balance.
+ */
+export function invalidateAfterSharedExpenseUpdate(qc: QueryClient, ledgerId: string) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: sharedExpenseKeys.all(ledgerId) }),
+    qc.invalidateQueries({ queryKey: sharedExpenseKeys.filterOptions(ledgerId) }),
+    qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'summary'] }),
+    qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'receivables'] }),
+    qc.invalidateQueries({ queryKey: ['accounts'] }),
+    qc.invalidateQueries({ queryKey: ['transactions'] }),
+  ])
+}
+
+/**
+ * Edit a shared expense. Call `mutate({ expenseId, input })`; on a 409 the
+ * error is an `ApiError` whose locked fields `getLockedFieldsFromError` returns.
+ */
+export function useUpdateSharedExpense(ledgerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ expenseId, input }: { expenseId: string; input: UpdateSharedExpenseInput }) =>
+      updateSharedExpense(ledgerId, expenseId, input),
+    onSuccess: () => invalidateAfterSharedExpenseUpdate(qc, ledgerId),
   })
 }
 
