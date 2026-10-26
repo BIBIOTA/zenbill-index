@@ -6,7 +6,6 @@ import type {
   SharedLedgerSummary,
   InviteInfo,
   ApiResponse,
-  PaginatedResponse,
   CreateSharedLedgerInput,
   CreateSharedExpenseInput,
   UpdateSharedLedgerInput,
