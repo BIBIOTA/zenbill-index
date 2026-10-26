@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type {
   SharedLedger,
@@ -10,7 +10,11 @@ import type {
   CreateSharedLedgerInput,
   CreateSharedExpenseInput,
   UpdateSharedLedgerInput,
+  SharedExpenseFilters,
+  SharedExpenseListResponse,
+  SharedExpenseFilterOptions,
 } from '../types/index.ts'
+import { sharedExpenseFiltersToQuery } from '../utils/sharedExpenseFilters.ts'
 import type { PartnerPaymentMethodList } from '../utils/sharedLedgerDisplay.ts'
 
 // === Ledger CRUD ===
@@ -150,14 +154,98 @@ export function useRegenerateInvite() {
 
 // === Expenses ===
 
-export function useSharedExpenses(ledgerId: string | undefined, page = 1, pageSize = 20) {
+/**
+ * Query keys for a ledger's expense list. Every list key sits under
+ * `['shared-ledgers', id, 'expenses']`, so the existing invalidations on
+ * create / delete / settle / sync refresh filtered and infinite lists too.
+ * Filters are normalized via `sharedExpenseFiltersToQuery`, so `{}` or a
+ * whitespace-only `q` share the unfiltered cache entry.
+ */
+export const sharedExpenseKeys = {
+  all: (ledgerId: string | undefined) => ['shared-ledgers', ledgerId, 'expenses'] as const,
+  list: (
+    ledgerId: string | undefined,
+    page: number,
+    pageSize: number,
+    filters?: SharedExpenseFilters,
+  ) =>
+    [
+      'shared-ledgers',
+      ledgerId,
+      'expenses',
+      { page, pageSize, filters: sharedExpenseFiltersToQuery(filters) },
+    ] as const,
+  infinite: (ledgerId: string | undefined, filters: SharedExpenseFilters | undefined, pageSize: number) =>
+    [
+      'shared-ledgers',
+      ledgerId,
+      'expenses',
+      'infinite',
+      { pageSize, filters: sharedExpenseFiltersToQuery(filters) },
+    ] as const,
+  filterOptions: (ledgerId: string | undefined) =>
+    ['shared-ledgers', ledgerId, 'expense-filters'] as const,
+}
+
+/** `GET /shared-ledgers/:id/expenses` path with paging and (normalized) filters. */
+export function sharedExpensesPath(
+  ledgerId: string | undefined,
+  page: number,
+  pageSize: number,
+  filters?: SharedExpenseFilters,
+): string {
+  const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  for (const [k, v] of Object.entries(sharedExpenseFiltersToQuery(filters))) params.set(k, v)
+  return `/shared-ledgers/${ledgerId}/expenses?${params.toString()}`
+}
+
+/**
+ * One page of a ledger's expenses. `filters` is optional; when any is active the
+ * response carries `summary` (count + total over all matches, not just this page).
+ */
+export function useSharedExpenses(
+  ledgerId: string | undefined,
+  page = 1,
+  pageSize = 20,
+  filters?: SharedExpenseFilters,
+) {
   const api = getApiClient()
   return useQuery({
-    queryKey: ['shared-ledgers', ledgerId, 'expenses', { page, pageSize }],
+    queryKey: sharedExpenseKeys.list(ledgerId, page, pageSize, filters),
+    queryFn: () => api.get<SharedExpenseListResponse>(sharedExpensesPath(ledgerId, page, pageSize, filters)),
+    enabled: !!ledgerId,
+  })
+}
+
+/** Infinite-scroll expense list (mirrors `useInfiniteTransactions`). */
+export function useInfiniteSharedExpenses(
+  ledgerId: string | undefined,
+  filters: SharedExpenseFilters | undefined,
+  pageSize = 20,
+) {
+  const api = getApiClient()
+  return useInfiniteQuery({
+    queryKey: sharedExpenseKeys.infinite(ledgerId, filters, pageSize),
+    queryFn: ({ pageParam = 1 }) =>
+      api.get<SharedExpenseListResponse>(sharedExpensesPath(ledgerId, pageParam, pageSize, filters)),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const { page, total_pages } = lastPage.pagination
+      return page < total_pages ? page + 1 : undefined
+    },
+    enabled: !!ledgerId,
+  })
+}
+
+/** Distinct partner payment methods actually used in this ledger (for the filter menu). */
+export function useSharedExpenseFilterOptions(ledgerId: string | undefined) {
+  const api = getApiClient()
+  return useQuery({
+    queryKey: sharedExpenseKeys.filterOptions(ledgerId),
     queryFn: () =>
-      api.get<PaginatedResponse<SharedExpense>>(
-        `/shared-ledgers/${ledgerId}/expenses?page=${page}&page_size=${pageSize}`,
-      ),
+      api
+        .get<ApiResponse<SharedExpenseFilterOptions>>(`/shared-ledgers/${ledgerId}/expense-filters`)
+        .then((r) => r.data),
     enabled: !!ledgerId,
   })
 }
@@ -170,6 +258,7 @@ export function useCreateSharedExpense(ledgerId: string) {
       api.post<ApiResponse<SharedExpense>>(`/shared-ledgers/${ledgerId}/expenses`, input),
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'expenses'] })
+      qc.invalidateQueries({ queryKey: sharedExpenseKeys.filterOptions(ledgerId) })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'summary'] })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'receivables'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
@@ -188,6 +277,7 @@ export function useDeleteSharedExpense(ledgerId: string) {
       api.delete<ApiResponse<null>>(`/shared-ledgers/${ledgerId}/expenses/${expenseId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'expenses'] })
+      qc.invalidateQueries({ queryKey: sharedExpenseKeys.filterOptions(ledgerId) })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'summary'] })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'receivables'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
@@ -264,6 +354,8 @@ export function useSyncSheet(ledgerId: string) {
       api.post<ApiResponse<{ pushed: number; pulled: number }>>(`/shared-ledgers/${ledgerId}/sync`, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'expenses'] })
+      // 從 Sheet 拉回來的列可能帶新的付款方式。
+      qc.invalidateQueries({ queryKey: sharedExpenseKeys.filterOptions(ledgerId) })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'summary'] })
       qc.invalidateQueries({ queryKey: ['shared-ledgers', ledgerId, 'receivables'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })

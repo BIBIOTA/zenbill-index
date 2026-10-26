@@ -472,6 +472,42 @@ export interface UpdateSharedLedgerInput {
   partner_aliases?: string[]
 }
 
+/** 共同支出分類，與後端 `domain.ExpenseCategory` 一致。 */
+export type SharedExpenseCategory =
+  | 'food'
+  | 'transport'
+  | 'accommodation'
+  | 'ticket'
+  | 'supplies'
+  | 'settlement'
+  | 'other'
+
+/** 支出列表篩選條件（以「方」為單位篩付款人）。全部選填，彼此 AND。 */
+export interface SharedExpenseFilters {
+  /** 只比對 description；去掉前後空白後為空視為沒有條件。 */
+  q?: string
+  category?: SharedExpenseCategory
+  payer?: 'owner' | 'partner'
+  /** 完全比對原字串。 */
+  partner_payment_method?: string
+}
+
+/** 所有符合條件紀錄的筆數與 total_amount 合計（與分頁無關）。 */
+export interface SharedExpenseListSummary {
+  count: number
+  total_amount: number
+}
+
+/** `GET /shared-ledgers/:id/expenses`；有任一篩選條件時才帶 `summary`。 */
+export interface SharedExpenseListResponse extends PaginatedResponse<SharedExpense> {
+  summary?: SharedExpenseListSummary
+}
+
+/** `GET /shared-ledgers/:id/expense-filters` 的 data：帳本實際出現過的值。 */
+export interface SharedExpenseFilterOptions {
+  partner_payment_methods: string[]
+}
+
 export interface SharedExpense {
   id: string
   ledger_id: string
