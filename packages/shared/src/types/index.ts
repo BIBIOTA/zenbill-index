@@ -522,6 +522,8 @@ export interface SharedExpense {
   partner_amount: number
   owner_paid_amount: number
   partner_paid_amount: number
+  /** Whether the ledger owner paid. Absent on responses predating it; fall back to `owner_paid_amount > 0`. */
+  paid_by_owner?: boolean
   settled_at: string | null
   source_type: string
   /** Which instrument the partner paid with. A free-text label, not an account reference. */

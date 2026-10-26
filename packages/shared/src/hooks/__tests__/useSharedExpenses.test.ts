@@ -119,3 +119,35 @@ describe('invalidateAfterSharedExpenseUpdate', () => {
     }
   })
 })
+
+describe('getSharedExpense / useSharedExpense', () => {
+  it('GETs /shared-ledgers/:id/expenses/:eid and unwraps data', async () => {
+    const calls: string[] = []
+    const expense = { id: 'E1', paid_by_owner: false } as shared.SharedExpense
+    shared.setApiClient({
+      get: async (path: string) => {
+        calls.push(path)
+        return { code: 200, message: 'success', data: expense }
+      },
+    } as unknown as shared.ApiClient)
+    await expect(shared.getSharedExpense('L1', 'E1')).resolves.toBe(expense)
+    expect(calls).toEqual(['/shared-ledgers/L1/expenses/E1'])
+  })
+
+  it('keys the detail under sharedExpenseKeys.all, so an update invalidates it', async () => {
+    expect(sharedExpenseKeys.detail('L1', 'E1')).toEqual([...sharedExpenseKeys.all('L1'), 'detail', 'E1'])
+    const qc = new QueryClient()
+    const key = sharedExpenseKeys.detail('L1', 'E1')
+    const other = sharedExpenseKeys.detail('L2', 'E1')
+    qc.setQueryData(key, {})
+    qc.setQueryData(other, {})
+    await shared.invalidateAfterSharedExpenseUpdate(qc, 'L1')
+    expect(qc.getQueryState(key)?.isInvalidated).toBe(true)
+    expect(qc.getQueryState(other)?.isInvalidated).toBe(false)
+  })
+
+  it('is exported from the package index', () => {
+    expect(shared).toHaveProperty('useSharedExpense')
+    expect(shared).toHaveProperty('getSharedExpense')
+  })
+})

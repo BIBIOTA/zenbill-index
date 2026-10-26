@@ -185,6 +185,9 @@ export const sharedExpenseKeys = {
     ] as const,
   filterOptions: (ledgerId: string | undefined) =>
     ['shared-ledgers', ledgerId, 'expense-filters'] as const,
+  /** One expense. Sits under `all`, so `invalidateAfterSharedExpenseUpdate` refreshes it. */
+  detail: (ledgerId: string | undefined, expenseId: string | undefined) =>
+    ['shared-ledgers', ledgerId, 'expenses', 'detail', expenseId] as const,
 }
 
 /** `GET /shared-ledgers/:id/expenses` path with paging and (normalized) filters. */
@@ -247,6 +250,22 @@ export function useSharedExpenseFilterOptions(ledgerId: string | undefined) {
         .get<ApiResponse<SharedExpenseFilterOptions>>(`/shared-ledgers/${ledgerId}/expense-filters`)
         .then((r) => r.data),
     enabled: !!ledgerId,
+  })
+}
+
+/** `GET /shared-ledgers/:id/expenses/:eid`. */
+export function getSharedExpense(ledgerId: string, expenseId: string) {
+  return getApiClient()
+    .get<ApiResponse<SharedExpense>>(`/shared-ledgers/${ledgerId}/expenses/${expenseId}`)
+    .then((r) => r.data)
+}
+
+/** One shared expense (e.g. to prefill the edit form). Disabled until both ids are known. */
+export function useSharedExpense(ledgerId: string | undefined, expenseId: string | undefined) {
+  return useQuery({
+    queryKey: sharedExpenseKeys.detail(ledgerId, expenseId),
+    queryFn: () => getSharedExpense(ledgerId!, expenseId!),
+    enabled: !!ledgerId && !!expenseId,
   })
 }
 
