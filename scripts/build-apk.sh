@@ -37,9 +37,15 @@ if [[ "${BUILD_VARIANT}" == "preview" ]]; then
         exit 1
     fi
     API_URL="${ZENBILL_PREVIEW_API_URL}"
+    # Web URL for shareable links (e.g. shared-ledger invites); optional for preview
+    WEB_URL="${ZENBILL_PREVIEW_WEB_URL:-}"
+    if [[ -z "${WEB_URL}" ]]; then
+        echo "WARNING: ZENBILL_PREVIEW_WEB_URL is not set. Invite links in this build will not open." >&2
+    fi
     export APP_VARIANT="preview"
 else
     API_URL="https://zenapi.bibiota.com/api/v1"
+    WEB_URL="https://zenbill.bibiota.com"
 fi
 
 log() {
@@ -172,7 +178,7 @@ log "Version set via env: ZENBILL_VERSION=${VERSION}, ZENBILL_VERSION_CODE=${VER
 # ============================================================
 
 log "Running expo prebuild (clean)..."
-if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" npx expo prebuild --platform android --clean 2>&1 | tee -a "${LOG_FILE}"; then
+if EXPO_PUBLIC_API_BASE_URL="${API_URL}" EXPO_PUBLIC_WEB_URL="${WEB_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" npx expo prebuild --platform android --clean 2>&1 | tee -a "${LOG_FILE}"; then
     log "Expo prebuild completed."
 else
     log "ERROR: Expo prebuild failed."
@@ -240,7 +246,7 @@ log "Signing config injected."
 cd "${APP_DIR}/android"
 
 log "Running Gradle assembleRelease..."
-if EXPO_PUBLIC_API_BASE_URL="${API_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
+if EXPO_PUBLIC_API_BASE_URL="${API_URL}" EXPO_PUBLIC_WEB_URL="${WEB_URL}" ZENBILL_VERSION="${VERSION}" ZENBILL_VERSION_CODE="${VERSION_CODE}" ./gradlew assembleRelease 2>&1 | tee -a "${LOG_FILE}"; then
     log "Gradle build completed."
 else
     log "ERROR: Gradle assembleRelease failed."
