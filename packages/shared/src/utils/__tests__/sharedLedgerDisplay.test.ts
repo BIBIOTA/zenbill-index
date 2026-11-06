@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   receivableTotalsByCurrency,
   getSharedLedgerPartyDisplayName,
+  getPartnerJoinLabel,
+  isPartnerJoined,
   isAgentRecordedExpense,
   getPartnerPaymentMethodLabel,
   resolvePartnerPaymentMethodField,
@@ -230,5 +232,21 @@ describe('receivableTotalsByCurrency', () => {
 
   it('returns nothing when there is nothing outstanding', () => {
     expect(receivableTotalsByCurrency([], 'TWD')).toEqual([])
+  })
+})
+
+describe('partner join status', () => {
+  it('treats a ledger with a partner_id as joined', () => {
+    expect(isPartnerJoined({ partner_id: 'b3c1f1de-0000-0000-0000-000000000001' })).toBe(true)
+    expect(getPartnerJoinLabel({ partner_id: 'b3c1f1de-0000-0000-0000-000000000001' })).toBe('已加入')
+  })
+
+  it('treats a ledger without a partner_id as still waiting', () => {
+    expect(isPartnerJoined({ partner_id: null })).toBe(false)
+    expect(getPartnerJoinLabel({ partner_id: null })).toBe('等待加入')
+  })
+
+  it('treats a missing ledger as not joined', () => {
+    expect(isPartnerJoined(undefined)).toBe(false)
   })
 })

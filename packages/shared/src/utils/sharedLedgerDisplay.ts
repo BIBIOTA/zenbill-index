@@ -44,6 +44,30 @@ export function resolveSharedExpensePayerName(
 }
 
 /**
+ * Whether the invited partner has accepted and joined this ledger.
+ *
+ * Only two states on purpose. Copying the invite link always regenerates the
+ * token, which silently kills any link sent earlier, so "pending but expired"
+ * could not be shown truthfully — and the remedy is the same either way:
+ * copy a fresh link and send it again.
+ */
+export function isPartnerJoined(
+  ledger: Pick<SharedLedger, 'partner_id'> | null | undefined,
+): boolean {
+  return ledger?.partner_id != null
+}
+
+/** Badge text for the partner's join status; shared so web and app read identically. */
+export function getPartnerJoinLabel(
+  ledger: Pick<SharedLedger, 'partner_id'> | null | undefined,
+): string {
+  return isPartnerJoined(ledger) ? '已加入' : '等待加入'
+}
+
+/** Shown beside the invite button while the partner has not joined yet. */
+export const INVITE_LINK_HINT = '連結 7 天內有效；重新產生會讓舊連結失效'
+
+/**
  * Label for an expense an AI agent recorded.
  *
  * Shared so the app and the web read identically; a marker that differs
