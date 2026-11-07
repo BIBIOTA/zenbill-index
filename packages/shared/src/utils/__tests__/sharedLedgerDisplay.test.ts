@@ -4,6 +4,7 @@ import {
   getLedgerBalanceDisplay,
   partyInitial,
   getSplitMethodLabel,
+  summarizeReceivables,
   getSharedLedgerPartyDisplayName,
   getPartnerJoinLabel,
   isPartnerJoined,
@@ -312,5 +313,26 @@ describe('getSplitMethodLabel', () => {
   it('labels equal and custom splits the same for both sides', () => {
     expect(getSplitMethodLabel('EQUAL', false, 'Yuki')).toBe('均分')
     expect(getSplitMethodLabel('CUSTOM', true, '小安')).toBe('自訂')
+  })
+})
+
+describe('summarizeReceivables', () => {
+  // owner paid 2560 split evenly → partner owes 1280; partner paid 1846 split evenly → owner owes 923
+  const expenses = [
+    { owner_paid_amount: 2560, owner_amount: 1280 },
+    { owner_paid_amount: 0, owner_amount: 923 },
+    { owner_paid_amount: 386, owner_amount: 193 },
+  ]
+
+  it('sums what the owner is owed and owes', () => {
+    expect(summarizeReceivables(expenses, true)).toEqual({ net: 550, receivable: 1473, receivableCount: 2, payable: 923, payableCount: 1 })
+  })
+
+  it('flips everything for the partner', () => {
+    expect(summarizeReceivables(expenses, false)).toEqual({ net: -550, receivable: 923, receivableCount: 1, payable: 1473, payableCount: 2 })
+  })
+
+  it('ignores rows that net to zero', () => {
+    expect(summarizeReceivables([{ owner_paid_amount: 500, owner_amount: 500 }], true)).toEqual({ net: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0 })
   })
 })

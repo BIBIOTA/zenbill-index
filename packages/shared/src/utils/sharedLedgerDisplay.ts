@@ -290,3 +290,37 @@ export function getSplitMethodLabel(method: string, viewerIsOwner: boolean, othe
       return method
   }
 }
+
+export interface ReceivablesSummary {
+  /** Positive: the other side owes the viewer after settling everything. */
+  net: number
+  receivable: number
+  receivableCount: number
+  payable: number
+  payableCount: number
+}
+
+/**
+ * Viewer-side totals for the unsettled list. Each expense's net is
+ * `owner_paid_amount − owner_amount` from the owner's side (positive: the
+ * partner owes the owner), flipped when the viewer is the partner.
+ */
+export function summarizeReceivables(
+  expenses: Pick<SharedExpense, 'owner_paid_amount' | 'owner_amount'>[],
+  viewerIsOwner: boolean,
+): ReceivablesSummary {
+  const summary: ReceivablesSummary = { net: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0 }
+  for (const exp of expenses) {
+    const ownerNet = exp.owner_paid_amount - exp.owner_amount
+    const viewerNet = viewerIsOwner ? ownerNet : -ownerNet
+    summary.net += viewerNet
+    if (viewerNet > 0) {
+      summary.receivable += viewerNet
+      summary.receivableCount += 1
+    } else if (viewerNet < 0) {
+      summary.payable += -viewerNet
+      summary.payableCount += 1
+    }
+  }
+  return summary
+}
