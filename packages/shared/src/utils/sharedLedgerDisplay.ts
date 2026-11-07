@@ -270,3 +270,23 @@ export function partyInitial(name: string): string {
   const chars = Array.from(trimmed)
   return /^[\p{Script=Latin}\d]/u.test(chars[0]) ? chars[0].toUpperCase() : chars[chars.length - 1]
 }
+
+/**
+ * Split method as the viewer reads it. FULL_OWNER means the owner bears the
+ * whole cost (not who paid — that is a separate field), so it reads 全算你 to
+ * the owner and 全算{owner} to the partner.
+ */
+export function getSplitMethodLabel(method: string, viewerIsOwner: boolean, otherName: string): string {
+  switch (method) {
+    case 'EQUAL':
+      return '均分'
+    case 'FULL_OWNER':
+      return viewerIsOwner ? '全算你' : `全算${otherName}`
+    case 'FULL_PARTNER':
+      return viewerIsOwner ? `全算${otherName}` : '全算你'
+    case 'CUSTOM':
+      return '自訂'
+    default:
+      return method
+  }
+}

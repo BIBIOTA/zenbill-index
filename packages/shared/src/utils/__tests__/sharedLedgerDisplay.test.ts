@@ -3,6 +3,7 @@ import {
   receivableTotalsByCurrency,
   getLedgerBalanceDisplay,
   partyInitial,
+  getSplitMethodLabel,
   getSharedLedgerPartyDisplayName,
   getPartnerJoinLabel,
   isPartnerJoined,
@@ -294,5 +295,22 @@ describe('partyInitial', () => {
 
   it('falls back to ? for an empty name', () => {
     expect(partyInitial('  ')).toBe('?')
+  })
+})
+
+describe('getSplitMethodLabel', () => {
+  it('reads from the owner side', () => {
+    expect(getSplitMethodLabel('FULL_OWNER', true, '小安')).toBe('全算你')
+    expect(getSplitMethodLabel('FULL_PARTNER', true, '小安')).toBe('全算小安')
+  })
+
+  it('reads from the partner side', () => {
+    expect(getSplitMethodLabel('FULL_OWNER', false, 'Yuki')).toBe('全算Yuki')
+    expect(getSplitMethodLabel('FULL_PARTNER', false, 'Yuki')).toBe('全算你')
+  })
+
+  it('labels equal and custom splits the same for both sides', () => {
+    expect(getSplitMethodLabel('EQUAL', false, 'Yuki')).toBe('均分')
+    expect(getSplitMethodLabel('CUSTOM', true, '小安')).toBe('自訂')
   })
 })
