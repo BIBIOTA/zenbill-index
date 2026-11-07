@@ -235,3 +235,38 @@ export function receivableTotalsByCurrency(
       return b.amount - a.amount
     })
 }
+
+export interface LedgerBalanceDisplay {
+  /** e.g. 「小安待付你」「你待付小安」「已結清」 */
+  label: string
+  /** Absolute amount in the ledger currency. */
+  amount: number
+  tone: 'income' | 'expense' | 'settled'
+}
+
+/**
+ * How the outstanding balance reads for the person looking at it.
+ * `receivable_balance` is from the owner's side: positive means the partner owes the owner.
+ */
+export function getLedgerBalanceDisplay(
+  ledger: Pick<SharedLedger, 'partner_aliases' | 'partner_name' | 'partner' | 'owner_aliases' | 'owner'>,
+  receivableBalance: number,
+  viewerIsOwner: boolean,
+): LedgerBalanceDisplay {
+  const owedToViewer = viewerIsOwner ? receivableBalance : -receivableBalance
+  const other = getSharedLedgerPartyDisplayName(ledger, viewerIsOwner ? 'partner' : 'owner')
+  if (owedToViewer > 0) return { label: `${other}待付你`, amount: owedToViewer, tone: 'income' }
+  if (owedToViewer < 0) return { label: `你待付${other}`, amount: -owedToViewer, tone: 'expense' }
+  return { label: '已結清', amount: 0, tone: 'settled' }
+}
+
+/**
+ * One character for a person's avatar: the last character of a CJK name
+ * (小安 → 安, as people are called), the first letter of a Latin one (Zumi → Z).
+ */
+export function partyInitial(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return '?'
+  const chars = Array.from(trimmed)
+  return /^[\p{Script=Latin}\d]/u.test(chars[0]) ? chars[0].toUpperCase() : chars[chars.length - 1]
+}

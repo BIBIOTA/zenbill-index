@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useInfiniteQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type {
   SharedLedger,
@@ -394,6 +394,21 @@ export function useSharedLedgerSummary(ledgerId: string | undefined) {
     queryFn: () =>
       api.get<ApiResponse<SharedLedgerSummary>>(`/shared-ledgers/${ledgerId}/summary`).then((r) => r.data),
     enabled: !!ledgerId,
+  })
+}
+
+/**
+ * One summary query per ledger, in the order given. Shares the cache key with
+ * useSharedLedgerSummary, so the dashboard and the ledger list fetch once.
+ */
+export function useSharedLedgerSummaries(ledgers: Pick<SharedLedger, 'id'>[] | undefined) {
+  const api = getApiClient()
+  return useQueries({
+    queries: (ledgers ?? []).map((ledger) => ({
+      queryKey: ['shared-ledgers', ledger.id, 'summary'] as const,
+      queryFn: () =>
+        api.get<ApiResponse<SharedLedgerSummary>>(`/shared-ledgers/${ledger.id}/summary`).then((r) => r.data),
+    })),
   })
 }
 

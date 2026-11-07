@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   receivableTotalsByCurrency,
+  getLedgerBalanceDisplay,
+  partyInitial,
   getSharedLedgerPartyDisplayName,
   getPartnerJoinLabel,
   isPartnerJoined,
@@ -248,5 +250,49 @@ describe('partner join status', () => {
 
   it('treats a missing ledger as not joined', () => {
     expect(isPartnerJoined(undefined)).toBe(false)
+  })
+})
+
+describe('getLedgerBalanceDisplay', () => {
+  const ledger = {
+    partner_name: '小安',
+    partner_aliases: [],
+    owner_aliases: ['Yuki'],
+    partner: undefined,
+    owner: undefined,
+  }
+
+  it('owner sees a positive balance as owed by the partner', () => {
+    expect(getLedgerBalanceDisplay(ledger, 2340, true)).toEqual({ label: '小安待付你', amount: 2340, tone: 'income' })
+  })
+
+  it('owner sees a negative balance as owed to the partner', () => {
+    expect(getLedgerBalanceDisplay(ledger, -500, true)).toEqual({ label: '你待付小安', amount: 500, tone: 'expense' })
+  })
+
+  it('partner sees the same balance from their side, naming the owner', () => {
+    expect(getLedgerBalanceDisplay(ledger, 2340, false)).toEqual({ label: '你待付Yuki', amount: 2340, tone: 'expense' })
+    expect(getLedgerBalanceDisplay(ledger, -500, false)).toEqual({ label: 'Yuki待付你', amount: 500, tone: 'income' })
+  })
+
+  it('zero is settled for both sides', () => {
+    expect(getLedgerBalanceDisplay(ledger, 0, true)).toEqual({ label: '已結清', amount: 0, tone: 'settled' })
+    expect(getLedgerBalanceDisplay(ledger, 0, false).tone).toBe('settled')
+  })
+})
+
+describe('partyInitial', () => {
+  it('uses the last character of a CJK name', () => {
+    expect(partyInitial('小安')).toBe('安')
+    expect(partyInitial('阿哲')).toBe('哲')
+  })
+
+  it('uses the first letter of a Latin name, uppercased', () => {
+    expect(partyInitial('Zumi')).toBe('Z')
+    expect(partyInitial('mei.lin')).toBe('M')
+  })
+
+  it('falls back to ? for an empty name', () => {
+    expect(partyInitial('  ')).toBe('?')
   })
 })
