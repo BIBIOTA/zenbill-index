@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TransactionStats } from '../../types'
-import { mtdChangePercent, otherCurrencyAmounts } from '../monthlyStats'
+import { groupTopCategories, mtdChangePercent, otherCurrencyAmounts } from '../monthlyStats'
 
 describe('mtdChangePercent', () => {
   it('returns null when previous is 0', () => {
@@ -67,5 +67,37 @@ describe('otherCurrencyAmounts', () => {
     ]
     otherCurrencyAmounts(stats(others), 'expense')
     expect(others.map((x) => x.currency)).toEqual(['USD', 'EUR'])
+  })
+})
+
+describe('groupTopCategories', () => {
+  const cat = (id: string | null, total: number) => ({ category_id: id, category_name: id ?? '未分類', total })
+
+  it('keeps every category when there are at most limit + 1, sorted by amount', () => {
+    const out = groupTopCategories([cat('a', 100), cat('b', 300), cat(null, 100)], 5)
+    expect(out.map((s) => s.id)).toEqual(['b', 'a', null])
+    expect(out.every((s) => !s.isOther)).toBe(true)
+    expect(out[0].percent).toBeCloseTo(60)
+  })
+
+  it('does not fold a single leftover category', () => {
+    const out = groupTopCategories([cat('a', 6), cat('b', 5), cat('c', 4)], 2)
+    expect(out).toHaveLength(3)
+    expect(out.some((s) => s.isOther)).toBe(false)
+  })
+
+  it('folds categories after the limit into one other slice', () => {
+    const out = groupTopCategories(
+      [cat('a', 50), cat('b', 20), cat('c', 15), cat('d', 10), cat('e', 5)],
+      2,
+    )
+    expect(out).toHaveLength(3)
+    expect(out[2]).toEqual({ id: null, name: '其他 3 類', value: 30, percent: 30, isOther: true, count: 3 })
+    expect(out.reduce((acc, s) => acc + s.percent, 0)).toBeCloseTo(100)
+  })
+
+  it('skips non-positive totals and handles empty input', () => {
+    expect(groupTopCategories([cat('a', 0), cat('b', -5)])).toEqual([])
+    expect(groupTopCategories([])).toEqual([])
   })
 })
