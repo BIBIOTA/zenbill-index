@@ -109,6 +109,18 @@ export function formatStockPriceUpdatedAt(value: string | null): string | null {
   return new Date(value).toLocaleString('zh-TW')
 }
 
+/**
+ * 股價更新時間的短格式（帳戶列表組標題、總覽股票卡）：今天只顯示 `13:30`，
+ * 其他日子顯示 `11/7 13:30`（本地時間）。無效時間回傳 `null`。
+ */
+export function formatStockPriceUpdatedTime(value: string | null, now: Date): string | null {
+  if (parseTimestamp(value) == null || value == null) return null
+  const d = new Date(value)
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  return sameDay ? time : `${d.getMonth() + 1}/${d.getDate()} ${time}`
+}
+
 export interface AssetSummaryEntry {
   assets: number
   liabilities: number
