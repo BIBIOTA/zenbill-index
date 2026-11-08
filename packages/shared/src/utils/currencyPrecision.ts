@@ -227,3 +227,28 @@ export function toStoredAmount(display: number, multiplier: number, decimals?: n
   if (decimals != null) return roundToCurrency(stored, decimals)
   return stripFloatError(stored) + 0 // + 0 normalizes -0 to 0
 }
+
+export interface CurrencyInputExample {
+  /** What the user would type, e.g. `50.5`. */
+  input: string
+  /** The resulting stored amount, formatted without symbol, e.g. `50,500`. */
+  amount: string
+}
+
+/**
+ * 幣別單位頁的「輸入範例」：依當下表單的倍數與小數位數，示範輸入一個數字會記成多少。
+ * 範例輸入值：倍數 > 1 用 50.5（看得出放大），否則小數 0 位用 1280、有小數用 12.5。
+ * `decimals` 為 null 時用幣別預設位數。倍數不合法（≤ 0、非數字）時回傳 null。
+ */
+export function currencyInputExample(
+  currency: string,
+  multiplier: number,
+  decimals: number | null,
+): CurrencyInputExample | null {
+  if (!Number.isFinite(multiplier) || multiplier <= 0) return null
+  const places = decimals ?? defaultDecimals(currency)
+  const input = multiplier > 1 ? 50.5 : places === 0 ? 1280 : 12.5
+  const stored = toStoredAmount(input, multiplier, places)
+  const amount = formatAmount(stored, currency, [{ currency_code: currency, multiplier, decimal_places: places }])
+  return { input: String(input), amount }
+}
