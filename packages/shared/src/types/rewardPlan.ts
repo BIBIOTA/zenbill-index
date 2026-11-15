@@ -51,6 +51,10 @@ export interface RewardPlan {
   merchant_ids: string[]
   /** 排除商家 */
   excluded_merchant_ids: string[]
+  /** 指定行動支付；和指定商家是 OR（兩者都空 = 不限） */
+  wallet_ids: string[]
+  /** 排除行動支付；交易沒有行動支付時視為不在名單內 */
+  excluded_wallet_ids: string[]
   created_at: string
   updated_at: string
 }
@@ -73,6 +77,8 @@ export interface RewardPlanInput {
   account_ids: string[]
   merchant_ids?: string[]
   excluded_merchant_ids?: string[]
+  wallet_ids?: string[]
+  excluded_wallet_ids?: string[]
 }
 
 /** 一條方案在某個計算期間的進度（帳戶頁、總覽共用；不含明細）。 */

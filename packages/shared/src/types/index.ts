@@ -22,6 +22,8 @@ export interface Account {
   payment_due_day: number | null
   auto_pay_from_id: string | null
   auto_pay_enabled: boolean
+  /** 預設行動支付：新增交易時由前端表單帶入；後端不會自動帶入。null = 無 */
+  default_wallet_id: string | null
   // Stock fields (only meaningful for STOCK accounts)
   stock_symbol: string
   stock_market: StockMarket | ''
@@ -64,6 +66,8 @@ export interface CreateAccountInput {
   payment_due_day?: number
   auto_pay_from_id?: string
   auto_pay_enabled?: boolean
+  /** 預設行動支付；null 清空 */
+  default_wallet_id?: string | null
   // Stock fields (used when type === 'STOCK')
   stock_symbol?: string
   stock_market?: StockMarket
@@ -108,6 +112,10 @@ export interface Transaction {
   occurred_at: string
   category_id: string | null
   merchant_id: string | null
+  /** 付款用的行動支付；null = 沒有（例如實體卡刷卡） */
+  wallet_id: string | null
+  /** 行動支付摘要（列表也會帶）；`wallet_id` 為 null 時是 null */
+  wallet: WalletSummary | null
   invoice_id: string | null
   note: string
   original_amount: number | null
@@ -152,6 +160,8 @@ export interface CreateTransactionInput {
   occurred_at: string
   category_id?: string
   merchant_id?: string
+  /** 付款用的行動支付；null 清空。後端不會自動帶入帳戶的預設行動支付 */
+  wallet_id?: string | null
   invoice_id?: string
   note?: string
   original_amount?: number
@@ -234,6 +244,32 @@ export interface CreateMerchantInput {
   default_account_id?: string
   /** null 清除預設國家 */
   default_country?: string | null
+}
+
+// === Wallet（行動支付）===
+/** 使用者自己管理的行動支付清單（`GET /wallets`，依 `sort_order`、`name` 排序）。 */
+export interface Wallet {
+  id: string
+  /** 同一使用者不可重複，最長 50 字 */
+  name: string
+  sort_order: number
+  /** 用到這個行動支付的交易筆數（刪除確認用） */
+  transaction_count: number
+  /** 指定或排除這個行動支付的方案條數（刪除確認用） */
+  plan_count: number
+  created_at: string
+  updated_at: string
+}
+
+/** 交易回應內嵌的行動支付摘要。 */
+export interface WalletSummary {
+  id: string
+  name: string
+}
+
+/** `POST /wallets` 與 `PUT /wallets/:id` 的 body；名稱重複時回 409。 */
+export interface WalletInput {
+  name: string
 }
 
 // === MerchantRule ===
