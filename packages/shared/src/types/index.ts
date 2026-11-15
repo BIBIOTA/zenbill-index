@@ -120,6 +120,10 @@ export interface Transaction {
   spending_country?: string | null
   /** false = 外幣交易推不出國家（仍算海外） */
   spending_country_known?: boolean
+  /** Who wrote this row: 'user' or 'agent'. Absent on responses predating agent tokens. */
+  created_by_actor?: string
+  /** Who last edited this row: 'user' or 'agent'; '' when never edited. */
+  updated_by_actor?: string
   running_balance?: number
   settled_at?: string | null
   created_at: string
