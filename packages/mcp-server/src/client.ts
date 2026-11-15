@@ -91,6 +91,15 @@ export interface Merchant {
   default_country: string | null
 }
 
+/** 行動支付: the payment instrument a transaction went through (Apple Pay, 全支付・PayPay …). */
+export interface Wallet {
+  id: string
+  name: string
+  sort_order: number
+  transaction_count: number
+  plan_count: number
+}
+
 export interface Category {
   id: string
   name: string
@@ -118,6 +127,8 @@ export interface Transaction {
   created_by_actor: string
   account?: { name: string; currency: string }
   merchant?: { name: string } | null
+  wallet_id?: string | null
+  wallet?: { id: string; name: string } | null
 }
 
 /** Body of POST /transactions as this server sends it: EXPENSE only. */
@@ -128,6 +139,7 @@ export interface CreatePersonalExpenseBody {
   occurred_at: string
   category_id?: string
   merchant_id?: string
+  wallet_id?: string
   note?: string
   original_amount?: number
   original_currency?: string
@@ -137,7 +149,7 @@ export interface CreatePersonalExpenseBody {
 
 /**
  * Body of PUT /transactions/:id. Omitted keys stay unchanged; only
- * country_override can be cleared (null or "").
+ * wallet_id (null) and country_override (null or "") can be cleared.
  */
 export interface UpdatePersonalExpenseBody {
   account_id?: string
@@ -145,6 +157,7 @@ export interface UpdatePersonalExpenseBody {
   occurred_at?: string
   category_id?: string
   merchant_id?: string
+  wallet_id?: string | null
   note?: string
   original_amount?: number
   original_currency?: string
@@ -358,6 +371,10 @@ export class ZenBillClient {
 
   async createMerchant(body: CreateMerchantBody): Promise<Merchant> {
     return this.request<Merchant>('POST', '/merchants', body)
+  }
+
+  async listWallets(): Promise<Wallet[]> {
+    return this.request<Wallet[]>('GET', '/wallets')
   }
 
   async listCategories(): Promise<Category[]> {

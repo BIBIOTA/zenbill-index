@@ -10,7 +10,7 @@
  * parameter for a payment account, merchant or personal category.
  *
  * Personal expenses (ADR 0005, separate token scopes): read accounts,
- * merchants, categories and reward-plan progress; create EXPENSE transactions;
+ * merchants, 行動支付 (wallets), categories and reward-plan progress; create EXPENSE transactions;
  * change, delete or reward-mark only the transactions the agent itself
  * created. There is no tool for INCOME, TRANSFER, invoices or anything a
  * person recorded.
@@ -90,6 +90,13 @@ const AMOUNT_RULE =
   'a JPY account takes the yen amount (¥1000 → 1000); a TWD card used abroad takes the TWD amount, ' +
   'with original_amount + original_currency (e.g. 1000 JPY) alongside.'
 
+/** When to set wallet_id (行動支付), for the tools that take one. */
+const WALLET_RULE =
+  'wallet_id = 行動支付 (the payment instrument), a UUID from list_wallets. Scanning a PayPay code: pick the ' +
+  '"〇〇・PayPay" wallet for the app that scanned it, e.g. 「全支付・PayPay」 — the merchant stays the real shop. ' +
+  'Tap-to-pay (Apple Pay, Samsung Pay …) or a QR wallet: pick that wallet. Physical card swipe/insert, ' +
+  'bank transfer or cash: leave it out. The account\'s default wallet is NOT applied automatically — you decide.'
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const dateParam = (what: string) =>
   z.string().regex(ISO_DATE, 'expected YYYY-MM-DD').describe(`${what}, YYYY-MM-DD`)
@@ -105,10 +112,11 @@ function formatTransaction(t: Transaction, currency?: string): string {
   const original =
     t.original_amount != null && t.original_currency ? ` (orig ${t.original_amount} ${t.original_currency})` : ''
   const merchant = t.merchant?.name ? `  ${t.merchant.name}` : t.merchant_id ? `  merchant ${t.merchant_id}` : ''
+  const wallet = t.wallet?.name ? `  via ${t.wallet.name}` : t.wallet_id ? `  via wallet ${t.wallet_id}` : ''
   const note = t.note ? `  "${t.note}"` : ''
   const country = t.spending_country ? `  [${t.spending_country}]` : ''
   const actor = t.created_by_actor === 'agent' ? '  [by agent]' : '  [by person — read-only]'
-  return `${t.id}  ${dayOf(t.occurred_at)}  ${t.type} ${amount}${original}${merchant}${note}${country}${actor}`
+  return `${t.id}  ${dayOf(t.occurred_at)}  ${t.type} ${amount}${original}${merchant}${wallet}${note}${country}${actor}`
 }
 
 function formatProgress(p: RewardProgress): string {
@@ -390,6 +398,21 @@ async function main() {
   )
 
   server.tool(
+    'list_wallets',
+    '列出行動支付（Apple Pay、全支付・PayPay…）。List the user\'s 行動支付 (wallets): the payment instruments a ' +
+      'transaction can go through, for wallet_id on create_expense / update_agent_expense. A "〇〇・PayPay" entry ' +
+      'is that app scanning a PayPay code and is separate from the app itself. The list is managed by the user; ' +
+      'agents cannot add or delete wallets. Read-only.',
+    {},
+    async () =>
+      reply(async () => {
+        const wallets = await client.listWallets()
+        if (wallets.length === 0) return 'No wallets.'
+        return wallets.map((w) => `${w.id}  ${w.name}`).join('\n')
+      }),
+  )
+
+  server.tool(
     'create_merchant',
     '新建商家（同名已存在會被拒絕，先用 list_merchants 查）。Create a merchant. A duplicate name is refused, so ' +
       'search with list_merchants first. Optional defaults are applied by the app when the user records at this merchant.',
@@ -445,6 +468,8 @@ async function main() {
       AGENT_WRITE_LIMIT +
       ' Record one EXPENSE on an account; the balance moves with it. ' +
       AMOUNT_RULE +
+      ' ' +
+      WALLET_RULE +
       ' Optionally mark it as counted toward reward plans (reward_plan_ids); the result reports each mark and ' +
       'the plans\' progress after the write. Only call after the user has confirmed the entry.',
     {
@@ -453,6 +478,13 @@ async function main() {
       amount: z.number().positive().describe('Stored amount in the account\'s currency'),
       category_id: z.string().optional().describe('Category UUID (merchant default if it has one)'),
       merchant_id: z.string().optional().describe('Merchant UUID from list_merchants / create_merchant'),
+      wallet_id: z
+        .string()
+        .optional()
+        .describe(
+          '行動支付 UUID from list_wallets. PayPay scan → 「〇〇・PayPay」; physical card or cash → omit. ' +
+            'Not filled from the account default.',
+        ),
       note: z.string().optional().describe('Free text, e.g. an item summary from the receipt'),
       original_amount: z
         .number()
@@ -523,7 +555,9 @@ async function main() {
     '修改 agent 自己建的支出。' +
       AGENT_WRITE_LIMIT +
       ' Change an expense this agent created; omitted fields stay as they are. The type cannot change. ' +
-      AMOUNT_RULE,
+      AMOUNT_RULE +
+      ' ' +
+      WALLET_RULE,
     {
       transaction_id: z.string().describe('Transaction UUID returned by create_expense'),
       account_id: z.string().optional().describe('Move it to another account'),
@@ -531,6 +565,11 @@ async function main() {
       amount: z.number().positive().optional().describe('New stored amount in the account\'s currency'),
       category_id: z.string().optional().describe('Category UUID'),
       merchant_id: z.string().optional().describe('Merchant UUID'),
+      wallet_id: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('行動支付 UUID from list_wallets; null clears it (paid by physical card / cash); omit to keep'),
       note: z.string().optional().describe('New note ("" empties it)'),
       original_amount: z.number().positive().optional(),
       original_currency: z.string().optional(),

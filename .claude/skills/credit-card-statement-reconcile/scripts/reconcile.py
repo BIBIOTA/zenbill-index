@@ -8,6 +8,8 @@ Usage:
     reconcile.py --card 幣倍 --start 2026-05-01 --end 2026-05-31
     reconcile.py --account-id <uuid> --start 2026-05-01 --end 2026-05-31
 
+Each row shows its 行動支付 (wallet) in brackets when one is set.
+
 Only EXPENSE rows are returned by default (statement line items); pass
 --include-transfers to also see auto-pay/settlement rows.
 """
@@ -50,6 +52,15 @@ def find_account(card: str):
     return rows[0]
 
 
+def has_wallets() -> bool:
+    """True once the 行動支付 migration has run on this database."""
+    rows = psql_json(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name='transactions' AND column_name='wallet_id'"
+    )
+    return bool(rows)
+
+
 def main():
     p = argparse.ArgumentParser()
     g = p.add_mutually_exclusive_group(required=True)
@@ -70,10 +81,18 @@ def main():
         account_id = args.account_id
 
     type_filter = "" if args.include_transfers else "AND t.type='EXPENSE'"
+    if has_wallets():
+        wallet_col = "w.name AS wallet "
+        wallet_join = "LEFT JOIN wallets w ON t.wallet_id=w.id "
+    else:
+        wallet_col = "NULL AS wallet "
+        wallet_join = ""
     rows = psql_json(
         "SELECT t.occurred_at::date AS date, t.amount, t.type, "
-        "COALESCE(m.name, NULLIF(t.note,''), '(no payee)') AS payee "
+        "COALESCE(m.name, NULLIF(t.note,''), '(no payee)') AS payee, "
+        f"{wallet_col}"
         "FROM transactions t LEFT JOIN merchants m ON t.merchant_id=m.id "
+        f"{wallet_join}"
         f"WHERE t.account_id='{account_id}' "
         f"AND t.occurred_at >= '{args.start}' "
         f"AND t.occurred_at < ('{args.end}'::date + 1) "
@@ -85,7 +104,8 @@ def main():
     for r in rows:
         amt = float(r["amount"])
         total += amt
-        print(f"{r['date']}  {amt:>12,.2f}  {r['type']:<10} {r['payee']}")
+        wallet = f"  [{r['wallet']}]" if r.get("wallet") else ""
+        print(f"{r['date']}  {amt:>12,.2f}  {r['type']:<10} {r['payee']}{wallet}")
     print(f"\n{len(rows)} rows, EXPENSE total = {total:,.2f}")
 
 

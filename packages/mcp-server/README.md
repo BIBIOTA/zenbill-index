@@ -26,7 +26,7 @@
 
 | 能 | 不能 |
 |---|---|
-| 列出帳戶、商家、分類 | 新增 INCOME、TRANSFER，或綁發票 |
+| 列出帳戶、商家、分類、行動支付 | 新增 INCOME、TRANSFER，或綁發票；新增／刪除行動支付 |
 | 新建商家 | 修改／刪除**人建的**交易 |
 | 新增 **EXPENSE**（餘額同步更新） | 對人建的交易做回饋方案標記 |
 | 修改／刪除 **agent 自己建的**支出 | 刪除已屬於共同支出的交易 |
@@ -59,7 +59,7 @@ docker exec -it zenbill_api /app/agent_token issue \
 | scope | 開放 |
 |---|---|
 | `transaction:write` | 新增 EXPENSE、改刪 agent 建的交易、查相似交易、讀分類 |
-| `account:read` | 列出／讀取帳戶 |
+| `account:read` | 列出／讀取帳戶、列出行動支付 |
 | `merchant:write` | 列出、新建商家 |
 | `reward:read` | 方案與進度 |
 | `reward:mark` | 對 agent 建的交易做計入標記（`create_expense` 的 `reward_plan_ids` 需要） |
@@ -123,17 +123,20 @@ pnpm --filter @zenbill/mcp-server build
 |---|---|---|
 | `list_accounts` | `include_archived?` | 帳戶 id、類型、幣別、餘額、結帳日 |
 | `list_merchants` | `query?`、`limit?` | 搜尋商家，附預設分類／帳戶／國家 |
+| `list_wallets` | — | 列出行動支付（id、名稱），供 `wallet_id` 使用；agent 不能新增或刪除 |
 | `create_merchant` | `name`、`default_category_id?`、`default_account_id?`、`default_country?` | 新建商家（同名回 400） |
 | `list_categories` | `include_income?` | 支出分類樹 |
 | `find_similar_transactions` | `account_id`、`date`、`amount` | 查重複：同帳戶、同日、`amount` 或 `original_amount` 相同 |
-| `create_expense` | `account_id`、`date`、`amount`、`category_id?`、`merchant_id?`、`note?`、`original_amount?`、`original_currency?`、`exchange_rate?`、`country_override?`、`reward_plan_ids?` | 新增 EXPENSE；逐一標記方案計入，回報標記結果、新餘額、寫入後各方案進度 |
-| `update_agent_expense` | `transaction_id` + 任一欄位（`date`、`amount`…；`country_override: null` 清除） | 改 agent 建的支出 |
+| `create_expense` | `account_id`、`date`、`amount`、`category_id?`、`merchant_id?`、`wallet_id?`、`note?`、`original_amount?`、`original_currency?`、`exchange_rate?`、`country_override?`、`reward_plan_ids?` | 新增 EXPENSE；逐一標記方案計入，回報標記結果、新餘額、寫入後各方案進度 |
+| `update_agent_expense` | `transaction_id` + 任一欄位（`date`、`amount`…；`wallet_id: null`、`country_override: null` 清除） | 改 agent 建的支出 |
 | `delete_agent_expense` | `transaction_id` | 刪 agent 建的支出（餘額還原） |
 | `list_reward_progress` | `account_id?`、`offset?`（需 `account_id`） | 方案進度總覽：已刷、上限、剩餘可刷、預估回饋 |
 | `get_reward_plan_progress` | `plan_id`、`offset?`、`transactions?`（`none`/`included`/`all`）、`limit?` | 單一方案某期進度，可列計入／不計入明細 |
 | `get_reward_summary` | `account_id`、`from?` + `to?`（成對）或 `period?`（`current`/`previous`）、`scope?`（`all`/`overseas`） | 總回饋率：同一張卡（共用方案的帳戶）在區間內的預估總回饋、消費、毛回饋率、扣國外交易服務費後的淨回饋率，與各方案貢獻（封頂標 `[CAPPED]`）；唯讀 |
 
 **金額是帳戶幣別的儲存值**：日幣帳戶記日圓（¥1000 → `amount: 1000`）；台幣卡在國外刷，`amount` 記台幣，另帶 `original_amount` + `original_currency`。方案進度一律以方案幣別計，未扣除退款。
+
+**行動支付（`wallet_id`）由 agent 自己決定**：掃 PayPay 時選「〇〇・PayPay」（例如「全支付・PayPay」），商家仍記真正的店家；實體卡刷卡、轉帳、現金不要填。後端**不會**自動帶入帳戶的預設行動支付。讀取交易的工具會在輸出中以 `via <行動支付名稱>` 標示。
 
 `create_expense` 的方案標記是建立後**另外**的請求：標記失敗時支出**已經寫入**，工具會列出哪個方案失敗，agent 不該重建那筆支出。
 

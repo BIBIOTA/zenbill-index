@@ -17,7 +17,7 @@ description: Use when reconciling a bank credit card statement line by line agai
 ## Overview
 
 核心是「以銀行帳單為真實來源 (source of truth)，找出 ZenBill 的差異」。流程：
-信件找帳單 PDF → 由信件內容判定密碼規則 → 問使用者密碼 → 解密並抽取帳單明細 → 查 ZenBill 該卡同期交易 → 比對差異 → 回饋另外處理 → 問要不要把這期帳單存起來。
+信件找帳單 PDF → 由信件內容判定密碼規則 → 問使用者密碼 → 解密並抽取帳單明細 → 查 ZenBill 該卡同期交易 → 比對差異（含行動支付）→ 回饋另外處理 → 問要不要把這期帳單存起來。
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ description: Use when reconciling a bank credit card statement line by line agai
 4. 向使用者詢問密碼（或構成密碼所需資料），切勿自行猜測
 5. 下載 + 解密 PDF → pdftotext 抽出帳單明細（日期/金額/商家）
 6. 查 ZenBill：該卡 account_id + 帳單週期日期範圍的交易
-7. 比對：列出「ZenBill 缺漏」「金額/日期不符」的項目
+7. 比對：列出「ZenBill 缺漏」「金額/日期不符」的項目，以及行動支付要修正／可能不被認列加碼的項目
 8. 若帳單有回饋 → 詢問使用者要如何記入 ZenBill，再記錄
 9. 問使用者要不要把這期帳單存起來（應繳總額等欄位 → credit_card_statements）
 ```
@@ -63,7 +63,7 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 ### Step 2–5 — 取得帳單文字
 
 照 [`fetch-statement.md`](fetch-statement.md) 的 A–D 做：找信（**先確認是信用卡帳單，不是銀行帳單**）→ 從信件讀密碼規則 → **向使用者要密碼，絕不猜** → `pdftotext -upw … -layout` 抽文字。完成條件寫在該檔開頭。
-抽出後整理成結構化清單：`{date, amount, merchant}`。
+抽出後整理成結構化清單：`{date, amount, merchant, wallet}`。`wallet` 是明細上看得出的支付名稱（見 Step 7「行動支付」），看不出就留空。
 
 ### Step 6 — 查 ZenBill 同期交易
 
@@ -71,8 +71,9 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 
 ```bash
 docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
-"SELECT t.occurred_at::date, t.amount, COALESCE(m.name, t.note) AS payee, t.type
+"SELECT t.id, t.occurred_at::date, t.amount, COALESCE(m.name, t.note) AS payee, t.type, w.name AS wallet
  FROM transactions t LEFT JOIN merchants m ON t.merchant_id=m.id
+ LEFT JOIN wallets w ON t.wallet_id=w.id
  WHERE t.account_id='<account_id>'
    AND t.occurred_at >= '<週期起>' AND t.occurred_at < '<週期迄+1天>'
  ORDER BY t.occurred_at;"
@@ -92,6 +93,55 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 | ZenBill 有、帳單無 | 提醒使用者（可能是其他卡 / 重複記 / 退刷） |
 
 比對用「金額 + 日期相近 + 商家相似」做模糊配對，不要只靠完全相等。輸出一份清單讓使用者一眼看出要補哪幾筆。
+
+#### 行動支付（`transactions.wallet_id`）
+
+配對成功的每一筆，再比一次行動支付。帳單上的支付名稱是銀行實際認定的付款方式，以它為準。
+
+> 資料庫還沒有 `wallets` 表（行動支付上線前）時跳過這一節；Step 6 SQL 也拿掉 `wallets` 的 JOIN。`reconcile.py` 會自己判斷。
+
+**辨識支付名稱**（依銀行而異，遇到新寫法就補進這張表）：
+
+| 帳單明細寫法 | 行動支付 |
+|------|------|
+| 含 `Apple Pay`（永豐等） | Apple Pay |
+| 含 `Samsung Pay`（永豐等） | Samsung Pay |
+| 含 `Google Pay`，或商家名稱前綴 `G-` | Google Pay |
+| 含 `Garmin Pay` | Garmin Pay |
+
+**判定**：
+
+| 狀況 | 處理 |
+|------|------|
+| 明細有支付名稱，ZenBill `wallet_id` 是空的或不同 | 列入「行動支付修正」清單，確認後**填上或改成**帳單上的那一個 |
+| 明細沒有支付名稱，ZenBill 交易填的行動支付是**加碼用的**（見下方 SQL） | 提醒使用者：「**銀行可能不認這筆加碼**」。**不要自動清空** `wallet_id`，由使用者決定 |
+| 明細沒有支付名稱，ZenBill 填的行動支付不在任何加碼方案裡 | 不處理 |
+
+> 第二列只在**這家銀行的帳單會印支付名稱**時才有意義（本期至少有一筆看得出支付名稱，或使用者確認過這家會印）。銀行本來就不印的話，每筆都會沒有名稱，不要整批提醒。
+
+查這張卡「加碼用的行動支付」（方案的指定行動支付）：
+
+```bash
+docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
+"SELECT DISTINCT w.id, w.name, p.name AS plan
+ FROM reward_plan_accounts pa
+ JOIN reward_plans p ON p.id=pa.plan_id
+ JOIN reward_plan_wallets pw ON pw.plan_id=p.id
+ JOIN wallets w ON w.id=pw.wallet_id
+ WHERE pa.account_id='<account_id>';"
+```
+
+寫入：先列出「交易 id／日期／金額／商家／目前行動支付 → 帳單上的行動支付」給使用者確認，再寫。行動支付 id 用名稱查，**只能用這位使用者自己的清單**：
+
+```bash
+docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
+"UPDATE transactions SET wallet_id=(
+   SELECT w.id FROM wallets w JOIN accounts a ON a.user_id=w.user_id
+   WHERE a.id='<account_id>' AND w.name='Samsung Pay')
+ WHERE id='<transaction_id>' AND account_id='<account_id>';"
+```
+
+> 只改 `wallet_id`、不碰金額，所以**不用**補 `accounts.balance`。查不到名稱（使用者刪過或改過名）就停下來問，不要寫成 NULL。
 
 ### Step 8 — 信用卡回饋處理
 
@@ -115,7 +165,8 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 | 找信用卡帳戶 | 見 Step 1 SQL |
 | 搜帳單信件 | `gws gmail ... messages list -q "..."` |
 | 找信／密碼／解密 | [`fetch-statement.md`](fetch-statement.md) |
-| 查同期交易 | `scripts/reconcile.py` 或 Step 6 SQL |
+| 查同期交易 | `scripts/reconcile.py` 或 Step 6 SQL（含行動支付欄） |
+| 加碼用的行動支付 | Step 7「行動支付」SQL |
 
 ## Common Mistakes
 
@@ -125,5 +176,7 @@ docker exec zenbill_postgres psql -U zenbill -d zenbill_prod -c \
 - **自動記錄回饋** → 必須先問使用者記法。
 - **走 API 卻沒帶 JWT** → 讀取改用 DB 直查；寫入才需要 token。
 - **密碼寫進檔案/log** → 只在當下指令使用，不落地。
+- **帳單沒印支付名稱就清空 `wallet_id`** → 只提醒「銀行可能不認這筆加碼」，清不清由使用者決定。
+- **把 PayPay 當成行動支付** → PayPay 是商家端的收款工具；用哪個錢包掃的才是行動支付（「全支付・PayPay」等組合項目）。
 - **跨卡混淆** → 一定先用卡名 `ILIKE` 鎖定唯一 `account_id` 再查交易。
 - **把銀行帳單當信用卡帳單** → 銀行寄的「電子對帳單」可能是存款帳戶對帳單；先確認主旨／PDF 內容是信用卡明細（交易日／入帳日／應繳金額），再對到 `type='CREDIT'` 帳戶。整合型 PDF 還要先抓出信用卡區塊。
