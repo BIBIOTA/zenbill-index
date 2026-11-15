@@ -114,6 +114,12 @@ export interface Transaction {
   original_currency: string | null
   exchange_rate: number | null
   billing_period_deferred: boolean
+  /** 消費國家覆寫（ISO 3166-1 alpha-2）；null = 依推導 */
+  country_override?: string | null
+  /** 推導後的消費國家：覆寫 → 商家預設國家 → 原幣別 → 帳戶幣別 → TW；推不出時 null */
+  spending_country?: string | null
+  /** false = 外幣交易推不出國家（仍算海外） */
+  spending_country_known?: boolean
   running_balance?: number
   settled_at?: string | null
   created_at: string
@@ -147,6 +153,8 @@ export interface CreateTransactionInput {
   original_amount?: number
   original_currency?: string
   exchange_rate?: number
+  /** 消費國家覆寫；null 清除覆寫 */
+  country_override?: string | null
 }
 
 // === Invoice ===
@@ -210,6 +218,8 @@ export interface Merchant {
   name: string
   default_category_id: string | null
   default_account_id: string | null
+  /** 商家預設消費國家（ISO 3166-1 alpha-2） */
+  default_country?: string | null
   created_at: string
   updated_at: string
 }
@@ -218,6 +228,8 @@ export interface CreateMerchantInput {
   name: string
   default_category_id?: string
   default_account_id?: string
+  /** null 清除預設國家 */
+  default_country?: string | null
 }
 
 // === MerchantRule ===
@@ -747,3 +759,5 @@ export interface AppRelease {
   min_supported_version_code: number | null // reserved, not enforced yet
   released_at: string // RFC3339
 }
+
+export * from './rewardPlan.ts'

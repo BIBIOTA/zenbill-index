@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient } from '../api/client.ts'
 import type { Merchant, ApiResponse, CreateMerchantInput } from '../types/index.ts'
+import { rewardInvalidators } from './useRewardPlans.ts'
 
 export function useMerchants() {
   const api = getApiClient()
@@ -26,7 +27,11 @@ export function useUpdateMerchant() {
   return useMutation({
     mutationFn: ({ id, ...input }: Partial<CreateMerchantInput> & { id: string }) =>
       api.put<ApiResponse<Merchant>>(`/merchants/${id}`, input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['merchants'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['merchants'] })
+      // default_country 影響消費國家推導 → 回饋方案的地點條件
+      rewardInvalidators.progress(qc)
+    },
   })
 }
 
@@ -51,6 +56,10 @@ export function useDeleteMerchant() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete<ApiResponse<null>>(`/merchants/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['merchants'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['merchants'] })
+      // 刪除商家會 CASCADE 移除方案的指定／排除商家名單
+      rewardInvalidators.plans(qc)
+    },
   })
 }
