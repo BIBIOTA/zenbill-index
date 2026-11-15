@@ -125,3 +125,66 @@ export interface RewardPlanProgressDetail extends RewardProgress {
 export interface RewardPlanMarkInput {
   included: boolean
 }
+
+/** 總回饋率的消費範圍：`overseas` 只算海外消費（手續費不受影響）。 */
+export type RewardSummaryScope = 'all' | 'overseas'
+
+/** 預設區間：`current` = 目前帳單週期（非信用卡為當月）、`previous` = 上一期。 */
+export type RewardSummaryPeriod = 'current' | 'previous'
+
+/**
+ * `GET /accounts/:id/reward-summary` 的 query。
+ * 送 `period` 或 `from`+`to` 擇一（兩者皆有時以 `from`/`to` 為準）；全省略 = 後端預設的本期。
+ */
+export interface RewardSummaryParams {
+  from?: string
+  to?: string
+  period?: RewardSummaryPeriod
+  scope?: RewardSummaryScope
+}
+
+/** 一條方案在查詢區間內的貢獻。 */
+export interface RewardSummaryPlan {
+  plan_id: string
+  name: string
+  unit_label: RewardUnitLabel
+  /** 歸屬日落在區間內的交易分到的回饋 */
+  reward: number
+  qualifying_spend: number
+  /** 區間內有任何一期在區間結束前已封頂 */
+  capped_in_range: boolean
+}
+
+/** 同一幣別的一組數字；方案幣別不同時每個幣別一組，不相加。 */
+export interface RewardSummaryGroup {
+  currency: string
+  /** 各方案區間內回饋相加（1 點 = 1 元） */
+  total_reward: number
+  /** 分母：區間內消費（排除國外交易服務費） */
+  spend: number
+  /** `qualifying` = 方案全為手動計入，只算至少被一條方案計入的消費 */
+  spend_basis: 'all' | 'qualifying'
+  /** 國外交易服務費，不受 scope 影響 */
+  fees: number
+  /** total_reward / spend；spend = 0 時 null */
+  gross_rate: number | null
+  /** (total_reward − fees) / spend；spend = 0 時 null */
+  net_rate: number | null
+  converted: boolean
+  /** 有方案以「點」計 → UI 註記「含點數」 */
+  includes_points: boolean
+  plans: RewardSummaryPlan[]
+}
+
+/** 同一張卡（帳戶—方案連通分量）在一段日期內的總回饋率；帳戶沒有方案時 API 回 `null`。 */
+export interface RewardSummary {
+  /** 實際使用的區間，`YYYY-MM-DD`，含頭含尾 */
+  from: string
+  to: string
+  scope: RewardSummaryScope
+  /** 同一張卡的所有帳戶 */
+  account_ids: string[]
+  groups: RewardSummaryGroup[]
+  /** 永遠 true：不扣退款 */
+  excludes_refunds: boolean
+}

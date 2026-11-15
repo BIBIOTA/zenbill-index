@@ -6,6 +6,7 @@ import type {
   RewardPlanInput,
   RewardPlanProgressDetail,
   RewardProgress,
+  RewardSummaryParams,
 } from '../types/index.ts'
 
 /** 方案定義（`GET /reward-plans`、`GET /reward-plans/:id`）。 */
@@ -27,6 +28,22 @@ export const rewardProgressKeys = {
     ['accounts', 'reward-progress', 'plan', planId, offset] as const,
   account: (accountId: string, offset: number) =>
     ['accounts', 'reward-progress', 'account', accountId, offset] as const,
+  /** 總回饋率；params 先正規化（去掉 undefined，`from`/`to` 優先於 `period`），同一查詢只有一個 key。 */
+  summary: (accountId: string, params: RewardSummaryParams) =>
+    ['accounts', 'reward-progress', 'summary', accountId, normalizeRewardSummaryParams(params)] as const,
+}
+
+/** 送 `period` 或 `from`+`to` 擇一（有 `from`/`to` 就不送 `period`），省略 undefined。 */
+export function normalizeRewardSummaryParams(params: RewardSummaryParams): RewardSummaryParams {
+  const out: RewardSummaryParams = {}
+  if (params.from || params.to) {
+    if (params.from) out.from = params.from
+    if (params.to) out.to = params.to
+  } else if (params.period) {
+    out.period = params.period
+  }
+  if (params.scope) out.scope = params.scope
+  return out
 }
 
 /** 寫入後要刷新的 query；hook 與測試共用同一份，避免 key 漂移。 */
