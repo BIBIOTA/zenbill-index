@@ -1,10 +1,13 @@
 /**
- * Thin HTTP client for the ZenBill shared-ledger API.
+ * Thin HTTP client for the ZenBill API surface open to agent tokens: the
+ * shared ledger, and (ADR 0005) the agent's own personal expenses plus the
+ * reward-plan progress they feed.
  *
  * Deliberately holds no business rules. Every limit that matters — what an
- * agent token may reach, that an agent-authored expense never links to a
- * personal account, that a linked expense may not be deleted — is enforced by
- * the server. This layer only shapes requests and makes refusals readable.
+ * agent token may reach, that a shared expense never links to a personal
+ * account, that only EXPENSE may be created, that only agent-created
+ * transactions may be changed, deleted or marked — is enforced by the server.
+ * This layer only shapes requests and makes refusals readable.
  */
 
 export type SplitMethod = 'EQUAL' | 'FULL_OWNER' | 'FULL_PARTNER' | 'CUSTOM'
@@ -66,6 +69,140 @@ export interface CreateExpenseArgs {
   owner_amount?: number
   partner_amount?: number
   partner_payment_method?: string
+}
+
+// --- Personal expenses and reward plans (ADR 0005) ---
+
+export interface Account {
+  id: string
+  name: string
+  type: string
+  currency: string
+  balance: number
+  closing_day: number | null
+  archived_at: string | null
+}
+
+export interface Merchant {
+  id: string
+  name: string
+  default_category_id: string | null
+  default_account_id: string | null
+  default_country: string | null
+}
+
+export interface Category {
+  id: string
+  name: string
+  type: string
+  icon: string
+  parent_id: string | null
+  children?: Category[]
+}
+
+export interface Transaction {
+  id: string
+  account_id: string
+  type: string
+  amount: number
+  occurred_at: string
+  category_id: string | null
+  merchant_id: string | null
+  note: string
+  original_amount: number | null
+  original_currency: string | null
+  exchange_rate: number | null
+  country_override: string | null
+  spending_country: string | null
+  spending_country_known?: boolean
+  created_by_actor: string
+  account?: { name: string; currency: string }
+  merchant?: { name: string } | null
+}
+
+/** Body of POST /transactions as this server sends it: EXPENSE only. */
+export interface CreatePersonalExpenseBody {
+  account_id: string
+  type: 'EXPENSE'
+  amount: number
+  occurred_at: string
+  category_id?: string
+  merchant_id?: string
+  note?: string
+  original_amount?: number
+  original_currency?: string
+  exchange_rate?: number
+  country_override?: string
+}
+
+/**
+ * Body of PUT /transactions/:id. Omitted keys stay unchanged; only
+ * country_override can be cleared (null or "").
+ */
+export interface UpdatePersonalExpenseBody {
+  account_id?: string
+  amount?: number
+  occurred_at?: string
+  category_id?: string
+  merchant_id?: string
+  note?: string
+  original_amount?: number
+  original_currency?: string
+  exchange_rate?: number
+  country_override?: string | null
+}
+
+export interface CreateMerchantBody {
+  name: string
+  default_category_id?: string
+  default_account_id?: string
+  default_country?: string
+}
+
+export interface RewardPlan {
+  id: string
+  name: string
+  rate: number
+  cap_amount: number | null
+  unit_label: string
+  currency: string
+  period_type: string
+  starts_on: string | null
+  ends_on: string | null
+  location_type: string
+  countries: string[]
+  min_single_amount: number | null
+  inclusion_mode: string
+  account_ids: string[]
+}
+
+export interface RewardProgress {
+  plan: RewardPlan
+  offset: number
+  period_start: string
+  period_end: string
+  qualifying_spend: number
+  estimated_reward: number
+  spend_cap: number | null
+  remaining_spend: number | null
+  over_cap_spend: number
+  capped: boolean
+  usage_ratio: number | null
+  unknown_country_count: number
+  converted: boolean
+  excludes_refunds: boolean
+}
+
+export interface RewardProgressTransaction {
+  transaction: Transaction
+  converted_amount: number
+  converted: boolean
+  mark_included: boolean | null
+}
+
+export interface RewardPlanProgressDetail extends RewardProgress {
+  included_transactions: RewardProgressTransaction[]
+  excluded_transactions: RewardProgressTransaction[]
 }
 
 interface ApiEnvelope<T> {
@@ -166,6 +303,64 @@ export class ZenBillClient {
     await this.request<null>('DELETE', `/shared-ledgers/${ledgerId}/expenses/${expenseId}`)
   }
 
+  // --- Personal expenses (scope transaction:write) ---
+
+  async listAccounts(): Promise<Account[]> {
+    return this.request<Account[]>('GET', '/accounts')
+  }
+
+  async getAccount(accountId: string): Promise<Account> {
+    return this.request<Account>('GET', `/accounts/${accountId}`)
+  }
+
+  async listMerchants(): Promise<Merchant[]> {
+    return this.request<Merchant[]>('GET', '/merchants')
+  }
+
+  async createMerchant(body: CreateMerchantBody): Promise<Merchant> {
+    return this.request<Merchant>('POST', '/merchants', body)
+  }
+
+  async listCategories(): Promise<Category[]> {
+    return this.request<Category[]>('GET', '/categories')
+  }
+
+  /** Same source account, same day, amount equal to amount or original_amount. */
+  async findSimilarTransactions(accountId: string, date: string, amount: number): Promise<Transaction[]> {
+    const query = new URLSearchParams({ account_id: accountId, date, amount: String(amount) })
+    return this.request<Transaction[]>('GET', `/transactions/similar?${query}`)
+  }
+
+  async createPersonalExpense(body: CreatePersonalExpenseBody): Promise<Transaction> {
+    return this.request<Transaction>('POST', '/transactions', body)
+  }
+
+  async updatePersonalExpense(transactionId: string, body: UpdatePersonalExpenseBody): Promise<Transaction> {
+    return this.request<Transaction>('PUT', `/transactions/${transactionId}`, body)
+  }
+
+  async deletePersonalExpense(transactionId: string): Promise<void> {
+    await this.request<null>('DELETE', `/transactions/${transactionId}`)
+  }
+
+  // --- Reward plans (scopes reward:read, reward:mark) ---
+
+  async listRewardProgress(): Promise<RewardProgress[]> {
+    return this.request<RewardProgress[]>('GET', '/reward-progress')
+  }
+
+  async getAccountRewardProgress(accountId: string, offset = 0): Promise<RewardProgress[]> {
+    return this.request<RewardProgress[]>('GET', `/accounts/${accountId}/reward-progress?offset=${offset}`)
+  }
+
+  async getRewardPlanProgress(planId: string, offset = 0): Promise<RewardPlanProgressDetail> {
+    return this.request<RewardPlanProgressDetail>('GET', `/reward-plans/${planId}/progress?offset=${offset}`)
+  }
+
+  async setRewardMark(planId: string, transactionId: string, included: boolean): Promise<void> {
+    await this.request<null>('PUT', `/reward-plans/${planId}/marks/${transactionId}`, { included })
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let response: Response
     try {
@@ -218,7 +413,7 @@ function explain(status: number, serverMessage?: string): string {
         ? detail
         : 'ZenBill refused this action for the agent token in use.'
     case 404:
-      return detail ?? 'ZenBill could not find that ledger or expense.'
+      return detail ?? 'ZenBill could not find that ledger, expense, account, transaction or plan.'
     default:
       return detail
         ? `ZenBill returned ${status}: ${detail}`
