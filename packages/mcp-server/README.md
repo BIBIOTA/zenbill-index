@@ -131,6 +131,7 @@ pnpm --filter @zenbill/mcp-server build
 | `delete_agent_expense` | `transaction_id` | 刪 agent 建的支出（餘額還原） |
 | `list_reward_progress` | `account_id?`、`offset?`（需 `account_id`） | 方案進度總覽：已刷、上限、剩餘可刷、預估回饋 |
 | `get_reward_plan_progress` | `plan_id`、`offset?`、`transactions?`（`none`/`included`/`all`）、`limit?` | 單一方案某期進度，可列計入／不計入明細 |
+| `get_reward_summary` | `account_id`、`from?` + `to?`（成對）或 `period?`（`current`/`previous`）、`scope?`（`all`/`overseas`） | 總回饋率：同一張卡（共用方案的帳戶）在區間內的預估總回饋、消費、毛回饋率、扣國外交易服務費後的淨回饋率，與各方案貢獻（封頂標 `[CAPPED]`）；唯讀 |
 
 **金額是帳戶幣別的儲存值**：日幣帳戶記日圓（¥1000 → `amount: 1000`）；台幣卡在國外刷，`amount` 記台幣，另帶 `original_amount` + `original_currency`。方案進度一律以方案幣別計，未扣除退款。
 

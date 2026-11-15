@@ -205,6 +205,45 @@ export interface RewardPlanProgressDetail extends RewardProgress {
   excluded_transactions: RewardProgressTransaction[]
 }
 
+export interface RewardSummaryPlan {
+  plan_id: string
+  name: string
+  unit_label: string
+  reward: number
+  qualifying_spend: number
+  capped_in_range: boolean
+}
+
+export interface RewardSummaryGroup {
+  currency: string
+  total_reward: number
+  spend: number
+  spend_basis: 'all' | 'qualifying'
+  fees: number
+  gross_rate: number | null
+  net_rate: number | null
+  converted: boolean
+  includes_points: boolean
+  plans: RewardSummaryPlan[]
+}
+
+/** 總回饋率 of one card (the account's card group) over a date range. */
+export interface RewardSummary {
+  from: string
+  to: string
+  scope: 'all' | 'overseas'
+  account_ids: string[]
+  groups: RewardSummaryGroup[]
+  excludes_refunds: boolean
+}
+
+export interface RewardSummaryQuery {
+  from?: string
+  to?: string
+  period?: 'current' | 'previous'
+  scope?: 'all' | 'overseas'
+}
+
 interface ApiEnvelope<T> {
   code: number
   message: string
@@ -355,6 +394,20 @@ export class ZenBillClient {
 
   async getRewardPlanProgress(planId: string, offset = 0): Promise<RewardPlanProgressDetail> {
     return this.request<RewardPlanProgressDetail>('GET', `/reward-plans/${planId}/progress?offset=${offset}`)
+  }
+
+  /** Null when the account has no reward plans overlapping the range (no card group). */
+  async getRewardSummary(accountId: string, q: RewardSummaryQuery = {}): Promise<RewardSummary | null> {
+    const query = new URLSearchParams()
+    for (const key of ['from', 'to', 'period', 'scope'] as const) {
+      const v = q[key]
+      if (v) query.set(key, v)
+    }
+    const qs = query.toString()
+    return this.request<RewardSummary | null>(
+      'GET',
+      `/accounts/${accountId}/reward-summary${qs ? `?${qs}` : ''}`,
+    )
   }
 
   async setRewardMark(planId: string, transactionId: string, included: boolean): Promise<void> {

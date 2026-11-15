@@ -30,6 +30,7 @@ import {
   type Category,
   type RewardProgress,
   type RewardProgressTransaction,
+  type RewardSummary,
   type SplitMethod,
   type Transaction,
 } from './client.js'
@@ -136,6 +137,38 @@ function formatProgressTransaction(row: RewardProgressTransaction, planCurrency:
   const mark = row.mark_included === true ? '  [marked in]' : row.mark_included === false ? '  [marked out]' : ''
   const converted = row.converted ? `  ≈${row.converted_amount} ${planCurrency}` : ''
   return `  ${formatTransaction(row.transaction)}${converted}${mark}`
+}
+
+/** A rate as a percentage with two decimals, or "n/a" when there was no spend. */
+function percent(rate: number | null): string {
+  return rate == null ? 'n/a' : `${(Math.round(rate * 10000) / 100).toFixed(2)}%`
+}
+
+function formatRewardSummary(s: RewardSummary, accountName: Map<string, string>): string {
+  const card = s.account_ids.map((id) => (accountName.has(id) ? `${accountName.get(id)} (${id})` : id)).join(', ')
+  const lines = [`${s.from}~${s.to}  scope ${s.scope}`, `Card accounts: ${card}`]
+  for (const g of s.groups) {
+    const cur = g.currency
+    const approx = g.converted ? '≈' : ''
+    lines.push(
+      `[${cur}] gross ${percent(g.gross_rate)}, net ${percent(g.net_rate)} (after foreign transaction fees)`,
+      `  reward ${approx}${g.total_reward} / spend ${approx}${g.spend} ${cur}; fees ${approx}${g.fees} ${cur}`,
+    )
+    const notes = [
+      g.spend_basis === 'qualifying' ? '僅計入消費 — spend counts only expenses some plan counted' : '',
+      g.includes_points ? 'points counted 1:1 as currency' : '',
+      g.converted ? 'FX-converted' : '',
+    ].filter(Boolean)
+    if (notes.length) lines.push(`  notes: ${notes.join('; ')}`)
+    for (const p of g.plans) {
+      lines.push(
+        `  ${p.plan_id}  ${p.name}: reward ${p.reward} ${p.unit_label}, qualifying spend ${p.qualifying_spend} ${cur}` +
+          (p.capped_in_range ? '  [CAPPED]' : ''),
+      )
+    }
+  }
+  if (s.excludes_refunds) lines.push('Refunds are not deducted.')
+  return lines.join('\n')
 }
 
 function flattenCategories(nodes: Category[], depth = 0): string[] {
@@ -596,6 +629,41 @@ async function main() {
         if (transactions === 'included' || transactions === 'all') list('Counted', d.included_transactions)
         if (transactions === 'all') list('Not counted', d.excluded_transactions)
         return lines.join('\n')
+      }),
+  )
+
+  server.tool(
+    'get_reward_summary',
+    '總回饋率：一張卡在一段日期的預估總回饋、消費、毛回饋率與扣國外交易服務費後的淨回饋率。' +
+      'Total reward rate of one card over a date range — answers "這幾天回饋率多少". The card is every account ' +
+      'linked to this one through shared reward plans (e.g. a card\'s TWD and JPY accounts), so any of them gives the ' +
+      'same numbers. gross = total reward / spend; net = (total reward − foreign transaction fees) / spend. ' +
+      'Range: from + to (inclusive, ≤ 366 days), or period current|previous, or neither for the current period (billing cycle for a credit card with a closing day, else calendar month); ' +
+      'the reply states the range used. ' +
+      'scope overseas counts only overseas spending (fees still count in full). Lists each plan\'s contribution. ' +
+      'Refunds are not deducted. Read-only.',
+    {
+      account_id: z.string().describe('Account UUID from list_accounts'),
+      from: dateParam('Range start (inclusive); requires to').optional(),
+      to: dateParam('Range end (inclusive); requires from').optional(),
+      period: z
+        .enum(['current', 'previous'])
+        .optional()
+        .describe('Current or previous billing period / month instead of from + to'),
+      scope: z.enum(['all', 'overseas']).optional().describe('all (default) or overseas spending only'),
+    },
+    async ({ account_id, from, to, period, scope }) =>
+      reply(async () => {
+        if ((from == null) !== (to == null)) return 'from and to must be given together.'
+        if (period && from) return 'Use either from + to or period, not both.'
+        if (from && to && from > to) return 'from must not be after to.'
+        const [summary, accounts] = await Promise.all([
+          client.getRewardSummary(account_id, { from, to, period, scope }),
+          optional(() => client.listAccounts()),
+        ])
+        if (!summary) return 'This account has no reward plans in that range.'
+        const accountName = new Map((accounts ?? []).map((a) => [a.id, a.name]))
+        return formatRewardSummary(summary, accountName)
       }),
   )
 
