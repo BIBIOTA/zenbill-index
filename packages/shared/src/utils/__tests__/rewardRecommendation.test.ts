@@ -4,6 +4,7 @@ import {
   formatComboReward,
   formatComboTitle,
   formatEquivalentWallets,
+  formatRecommendationPlanReward,
   recommendationPlanNotes,
   splitZeroCombos,
 } from '../rewardRecommendation'
@@ -45,6 +46,11 @@ describe('formatEquivalentWallets', () => {
       equivalent_wallets: [{ id: '1', name: 'Apple Pay' }, { id: '2', name: 'LINE Pay' }],
     }))).toBe('Apple Pay、LINE Pay 等同')
   })
+  it('abbreviates long lists', () => {
+    const names = ['Apple Pay', 'Google Pay', 'Samsung Pay', 'LINE Pay']
+    expect(formatEquivalentWallets(combo({ equivalent_wallets: names.map((name, i) => ({ id: String(i), name })) })))
+      .toBe('Apple Pay、Google Pay 等 4 個行動支付等同')
+  })
 })
 
 describe('recommendationPlanNotes', () => {
@@ -58,6 +64,15 @@ describe('recommendationPlanNotes', () => {
       '需手動計入', '需單筆滿 NT$1,000',
     ])
     expect(recommendationPlanNotes(plan({ remaining_spend: 4000 }))).toEqual(['剩餘可刷 NT$4,000'])
+  })
+})
+
+describe('formatRecommendationPlanReward', () => {
+  it('money for 元, points for 點, rate without an amount', () => {
+    expect(formatRecommendationPlanReward(plan({ reward: 103 }))).toBe('NT$103')
+    expect(formatRecommendationPlanReward(plan({ reward: 103, unit_label: '點' }))).toBe('103 點')
+    expect(formatRecommendationPlanReward(plan({ reward: null, rate: 0.025, unit_label: '點' }))).toBe('2.5%')
+    expect(formatRecommendationPlanReward(plan({ reward: null, rate: 0.03, status: 'capped' }))).toBe('0.0%')
   })
 })
 

@@ -3,6 +3,7 @@
  * 詞彙見 `CONTEXT.md`「刷卡建議」「付款組合」。
  */
 import type { RecommendationCombo, RecommendationPlan } from '../types/index.ts'
+import { formatAmount } from './currencyPrecision.ts'
 import { formatRewardMoney } from './rewardProgress.ts'
 import { formatRewardRate } from './rewardSummary.ts'
 import { cardBaseName } from './spendingCountry.ts'
@@ -20,10 +21,19 @@ export function formatComboReward(combo: RecommendationCombo, currency: string |
   return `${formatRewardMoney(combo.reward_amount, currency, { converted })}・${rate}`
 }
 
-/** 「Apple Pay、LINE Pay 等同」；沒有收合任何行動支付時 null。 */
+/** 「Apple Pay、LINE Pay 等同」；超過 3 個縮成「A、B 等 N 個行動支付等同」；沒有收合任何行動支付時 null。 */
 export function formatEquivalentWallets(combo: RecommendationCombo): string | null {
-  if (combo.equivalent_wallets.length === 0) return null
-  return `${combo.equivalent_wallets.map((w) => w.name).join('、')} 等同`
+  const names = combo.equivalent_wallets.map((w) => w.name)
+  if (names.length === 0) return null
+  if (names.length <= 3) return `${names.join('、')} 等同`
+  return `${names.slice(0, 2).join('、')} 等 ${names.length} 個行動支付等同`
+}
+
+/** 方案列右側的數字：以「點」計的方案顯示「103 點」；沒輸入金額時顯示回饋率（已封頂為 0）。 */
+export function formatRecommendationPlanReward(plan: RecommendationPlan): string {
+  if (plan.reward == null) return formatRewardRate(plan.status === 'capped' ? 0 : plan.rate)
+  if (plan.unit_label === '點') return `${formatAmount(plan.reward, plan.currency)} 點`
+  return formatRewardMoney(plan.reward, plan.currency)
 }
 
 /** 方案列的註記，依序：封頂狀態、需手動計入、單筆門檻、剩餘可刷（已封頂時不顯示）。 */
