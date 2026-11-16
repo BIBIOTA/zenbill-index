@@ -194,3 +194,62 @@ export interface RewardSummary {
   /** 永遠 true：不扣退款 */
   excludes_refunds: boolean
 }
+
+// === 刷卡建議（GET /reward-recommendations）===
+
+/** `counted` 全額計入；`partially_capped` 只有剩餘可刷那段計入；`capped` 本期已封頂（回饋 0）。 */
+export type RecommendationPlanStatus = 'counted' | 'partially_capped' | 'capped'
+
+/** 付款組合裡一條符合條件的方案。金額都以方案幣別 `currency` 表示。 */
+export interface RecommendationPlan {
+  plan_id: string
+  name: string
+  rate: number
+  unit_label: string
+  currency: string
+  status: RecommendationPlanStatus
+  /** 這筆的預估回饋；沒輸入金額時 null */
+  reward: number | null
+  /** 這筆之前的剩餘可刷；沒有上限時 null */
+  remaining_spend: number | null
+  /** 沒輸入金額時才有：單筆最低金額（只加註、不擋） */
+  min_single_amount_note: number | null
+  needs_manual_mark: boolean
+}
+
+export interface WalletRef {
+  id: string
+  name: string
+}
+
+/** 付款組合：同一張卡 × 行動支付（`wallet` null = 實體卡）。 */
+export interface RecommendationCombo {
+  account_ids: string[]
+  card_label: string
+  wallet: WalletRef | null
+  /** 回饋和這列完全一樣、被收進來的行動支付 */
+  equivalent_wallets: WalletRef[]
+  /** 查詢幣別；沒輸入金額時 null */
+  reward_amount: number | null
+  reward_rate: number
+  plans: RecommendationPlan[]
+}
+
+/** 刷卡建議；`combos` 由好到差排序。 */
+export interface RewardRecommendation {
+  country: string
+  overseas: boolean
+  amount: number | null
+  currency: string | null
+  combos: RecommendationCombo[]
+}
+
+export interface RewardRecommendationParams {
+  merchantId?: string
+  /** 沒建成商家時的文字；有 merchantId 時不送 */
+  q?: string
+  country?: string
+  amount?: number
+  /** 有 amount 才送 */
+  currency?: string
+}

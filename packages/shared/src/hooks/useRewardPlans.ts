@@ -6,6 +6,7 @@ import type {
   RewardPlanInput,
   RewardPlanProgressDetail,
   RewardProgress,
+  RewardRecommendationParams,
   RewardSummaryParams,
 } from '../types/index.ts'
 
@@ -31,6 +32,9 @@ export const rewardProgressKeys = {
   /** 總回饋率；params 先正規化（去掉 undefined，`from`/`to` 優先於 `period`），同一查詢只有一個 key。 */
   summary: (accountId: string, params: RewardSummaryParams) =>
     ['accounts', 'reward-progress', 'summary', accountId, normalizeRewardSummaryParams(params)] as const,
+  /** 刷卡建議；和進度一樣只依賴方案與交易，沿用同一組 invalidation。 */
+  recommendation: (params: RewardRecommendationParams) =>
+    ['accounts', 'reward-progress', 'recommendation', params] as const,
 }
 
 /** 送 `period` 或 `from`+`to` 擇一（有 `from`/`to` 就不送 `period`），省略 undefined。 */
