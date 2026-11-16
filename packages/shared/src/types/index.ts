@@ -610,6 +610,11 @@ export interface CreateSharedExpenseInput {
   partner_payment_method?: string
   /** Import this invoice along with the expense. Requires payment_account_id. */
   invoice_id?: string
+  /**
+   * 行動支付，只套用在同時建立的個人交易上，不存進共同支出。
+   * 沒有 payment_account_id 時後端會忽略。
+   */
+  wallet_id?: string | null
 }
 
 /**
@@ -619,7 +624,7 @@ export interface CreateSharedExpenseInput {
  */
 export type UpdateSharedExpenseInput = Omit<
   CreateSharedExpenseInput,
-  'payment_account_id' | 'merchant_id' | 'personal_category_id' | 'invoice_id'
+  'payment_account_id' | 'merchant_id' | 'personal_category_id' | 'invoice_id' | 'wallet_id'
 >
 
 export interface SharedLedgerSummary {

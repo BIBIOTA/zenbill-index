@@ -21,6 +21,7 @@ const tx: InvoiceSharedExpenseTransaction = {
   category_id: 'cat-1',
   merchant_id: 'merchant-1',
   invoice_id: 'inv-1',
+  wallet_id: 'wallet-1',
 }
 
 const base: InvoiceSharedExpenseArgs = {
@@ -40,6 +41,15 @@ function build(overrides: Partial<InvoiceSharedExpenseArgs> = {}) {
 }
 
 describe('buildInvoiceSharedExpenseInput', () => {
+  it('carries the wallet over to the personal transaction', () => {
+    expect(build().wallet_id).toBe('wallet-1')
+  })
+
+  it('sends an explicit wallet_id: null when no wallet is picked', () => {
+    const input = build({ transaction: { ...tx, wallet_id: null } })
+    expect(input).toHaveProperty('wallet_id', null)
+  })
+
   it('carries the transaction form over: account, amount, date, category, merchant, invoice', () => {
     const input = build()
     expect(input.payment_account_id).toBe('acct-1')

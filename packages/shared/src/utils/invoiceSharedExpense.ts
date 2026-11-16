@@ -38,6 +38,8 @@ export interface InvoiceSharedExpenseTransaction {
   category_id?: string
   merchant_id?: string
   invoice_id: string
+  /** 行動支付；沒選時是 null。只套用在同時建立的個人交易上。 */
+  wallet_id: string | null
 }
 
 /** 自訂分帳以「我 / 對方」表示，由本函式依呼叫者角色對應成 owner / partner。 */
@@ -83,6 +85,7 @@ export function buildInvoiceSharedExpenseInput(args: InvoiceSharedExpenseArgs): 
     split_method: split.method,
     payment_account_id: tx.account_id,
     invoice_id: tx.invoice_id,
+    wallet_id: tx.wallet_id,
   }
   if (tx.merchant_id) input.merchant_id = tx.merchant_id
   if (tx.category_id) input.personal_category_id = tx.category_id
