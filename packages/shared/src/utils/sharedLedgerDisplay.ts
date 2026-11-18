@@ -1,4 +1,4 @@
-import type { SharedExpense, SharedLedger } from '../types'
+import type { SharedExpense, SharedLedger, SplitMethod } from '../types'
 
 type SharedLedgerParty = 'owner' | 'partner'
 
@@ -193,11 +193,22 @@ export function resolvePartnerPaymentMethodField(input: {
   return { kind: 'hidden' }
 }
 
+/**
+ * What the other side owes the viewer, from a ledger summary's `receivable_balance`.
+ * The server always reports that balance from the owner's side (positive: the
+ * partner owes the owner), so it reads the other way round to the partner.
+ */
+export function owedToViewer(receivableBalance: number, viewerIsOwner: boolean): number {
+  return viewerIsOwner ? receivableBalance : -receivableBalance
+}
+
 export interface ReceivableEntry {
   /** The ledger's currency; amounts of different currencies are never added together. */
   currency: string
-  /** That ledger's `receivable_balance`. */
+  /** That ledger's `receivable_balance`, as the server reports it (owner's side). */
   balance: number
+  /** Whether the viewer owns that ledger — decides which way the balance reads. */
+  viewerIsOwner: boolean
 }
 
 export interface ReceivableTotal {
@@ -220,10 +231,11 @@ export function receivableTotalsByCurrency(
   preferred: string,
 ): ReceivableTotal[] {
   const totals = new Map<string, number>()
-  for (const { currency, balance } of entries) {
-    if (!(balance > 0)) continue
+  for (const { currency, balance, viewerIsOwner } of entries) {
+    const owed = owedToViewer(balance, viewerIsOwner)
+    if (!(owed > 0)) continue
     const code = currency.toUpperCase()
-    totals.set(code, (totals.get(code) ?? 0) + balance)
+    totals.set(code, (totals.get(code) ?? 0) + owed)
   }
 
   const key = preferred.toUpperCase()
@@ -253,10 +265,10 @@ export function getLedgerBalanceDisplay(
   receivableBalance: number,
   viewerIsOwner: boolean,
 ): LedgerBalanceDisplay {
-  const owedToViewer = viewerIsOwner ? receivableBalance : -receivableBalance
+  const owed = owedToViewer(receivableBalance, viewerIsOwner)
   const other = getSharedLedgerPartyDisplayName(ledger, viewerIsOwner ? 'partner' : 'owner')
-  if (owedToViewer > 0) return { label: `${other}待付你`, amount: owedToViewer, tone: 'income' }
-  if (owedToViewer < 0) return { label: `你待付${other}`, amount: -owedToViewer, tone: 'expense' }
+  if (owed > 0) return { label: `${other}待付你`, amount: owed, tone: 'income' }
+  if (owed < 0) return { label: `你待付${other}`, amount: -owed, tone: 'expense' }
   return { label: '已結清', amount: 0, tone: 'settled' }
 }
 
@@ -289,6 +301,21 @@ export function getSplitMethodLabel(method: string, viewerIsOwner: boolean, othe
     default:
       return method
   }
+}
+
+/**
+ * The split-method choices as the viewer reads them, the method that puts the
+ * whole cost on the viewer listed before the one that puts it on the other side.
+ * Every form that records a shared expense offers this same list.
+ */
+export function getSplitMethodOptions(
+  viewerIsOwner: boolean,
+  otherName: string,
+): { value: SplitMethod; label: string }[] {
+  const methods: SplitMethod[] = viewerIsOwner
+    ? ['EQUAL', 'FULL_OWNER', 'FULL_PARTNER', 'CUSTOM']
+    : ['EQUAL', 'FULL_PARTNER', 'FULL_OWNER', 'CUSTOM']
+  return methods.map((value) => ({ value, label: getSplitMethodLabel(value, viewerIsOwner, otherName) }))
 }
 
 export interface ReceivablesSummary {

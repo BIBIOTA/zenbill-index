@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   receivableTotalsByCurrency,
   getLedgerBalanceDisplay,
+  owedToViewer,
   partyInitial,
   getSplitMethodLabel,
+  getSplitMethodOptions,
   summarizeReceivables,
   getSharedLedgerPartyDisplayName,
   getPartnerJoinLabel,
@@ -191,9 +193,9 @@ describe('receivableTotalsByCurrency', () => {
     expect(
       receivableTotalsByCurrency(
         [
-          { currency: 'TWD', balance: 100 },
-          { currency: 'TWD', balance: 50 },
-          { currency: 'USD', balance: 12.34 },
+          { currency: 'TWD', balance: 100, viewerIsOwner: true },
+          { currency: 'TWD', balance: 50, viewerIsOwner: true },
+          { currency: 'USD', balance: 12.34, viewerIsOwner: true },
         ],
         'TWD',
       ),
@@ -207,9 +209,9 @@ describe('receivableTotalsByCurrency', () => {
     expect(
       receivableTotalsByCurrency(
         [
-          { currency: 'TWD', balance: -500 },
-          { currency: 'USD', balance: 0 },
-          { currency: 'JPY', balance: 3000 },
+          { currency: 'TWD', balance: -500, viewerIsOwner: true },
+          { currency: 'USD', balance: 0, viewerIsOwner: true },
+          { currency: 'JPY', balance: 3000, viewerIsOwner: true },
         ],
         'TWD',
       ),
@@ -219,9 +221,9 @@ describe('receivableTotalsByCurrency', () => {
   it('headlines the preferred currency, then orders by amount', () => {
     const totals = receivableTotalsByCurrency(
       [
-        { currency: 'USD', balance: 10 },
-        { currency: 'JPY', balance: 90000 },
-        { currency: 'TWD', balance: 1 },
+        { currency: 'USD', balance: 10, viewerIsOwner: true },
+        { currency: 'JPY', balance: 90000, viewerIsOwner: true },
+        { currency: 'TWD', balance: 1, viewerIsOwner: true },
       ],
       'TWD',
     )
@@ -229,9 +231,22 @@ describe('receivableTotalsByCurrency', () => {
   })
 
   it('normalises the currency code', () => {
-    expect(receivableTotalsByCurrency([{ currency: 'twd', balance: 5 }], 'TWD')).toEqual([
+    expect(receivableTotalsByCurrency([{ currency: 'twd', balance: 5, viewerIsOwner: true }], 'TWD')).toEqual([
       { currency: 'TWD', amount: 5 },
     ])
+  })
+
+  it('reads the balance from the partner side: a negative balance is what the owner owes them', () => {
+    expect(
+      receivableTotalsByCurrency(
+        [
+          { currency: 'TWD', balance: -500, viewerIsOwner: false },
+          { currency: 'TWD', balance: 200, viewerIsOwner: false },
+          { currency: 'TWD', balance: 100, viewerIsOwner: true },
+        ],
+        'TWD',
+      ),
+    ).toEqual([{ currency: 'TWD', amount: 600 }])
   })
 
   it('returns nothing when there is nothing outstanding', () => {
@@ -334,5 +349,33 @@ describe('summarizeReceivables', () => {
 
   it('ignores rows that net to zero', () => {
     expect(summarizeReceivables([{ owner_paid_amount: 500, owner_amount: 500 }], true)).toEqual({ net: 0, receivable: 0, receivableCount: 0, payable: 0, payableCount: 0 })
+  })
+})
+
+describe('getSplitMethodOptions', () => {
+  it('offers every split method, the viewer-bears-all option before the other side', () => {
+    expect(getSplitMethodOptions(true, '小安')).toEqual([
+      { value: 'EQUAL', label: '均分' },
+      { value: 'FULL_OWNER', label: '全算你' },
+      { value: 'FULL_PARTNER', label: '全算小安' },
+      { value: 'CUSTOM', label: '自訂' },
+    ])
+  })
+
+  it('reads from the partner side', () => {
+    expect(getSplitMethodOptions(false, 'Yuki')).toEqual([
+      { value: 'EQUAL', label: '均分' },
+      { value: 'FULL_PARTNER', label: '全算你' },
+      { value: 'FULL_OWNER', label: '全算Yuki' },
+      { value: 'CUSTOM', label: '自訂' },
+    ])
+  })
+})
+
+describe('owedToViewer', () => {
+  it('keeps the server balance for the owner and flips it for the partner', () => {
+    expect(owedToViewer(300, true)).toBe(300)
+    expect(owedToViewer(300, false)).toBe(-300)
+    expect(owedToViewer(-120, false)).toBe(120)
   })
 })

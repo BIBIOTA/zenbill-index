@@ -42,9 +42,13 @@ export interface InvoiceSharedExpenseTransaction {
   wallet_id: string | null
 }
 
-/** 自訂分帳以「我 / 對方」表示，由本函式依呼叫者角色對應成 owner / partner。 */
+/**
+ * 分帳方式。全算某一方用 owner / partner 表示（畫面上依觀看者角色顯示成「全算你」或
+ * 「全算對方」，見 getSplitMethodOptions）；自訂分帳則以「我 / 對方」表示，由本函式
+ * 依呼叫者角色對應成 owner / partner。
+ */
 export type InvoiceSharedExpenseSplit =
-  | { method: 'EQUAL' }
+  | { method: 'EQUAL' | 'FULL_OWNER' | 'FULL_PARTNER' }
   | { method: 'CUSTOM'; selfAmount: number; otherAmount: number }
 
 export interface InvoiceSharedExpenseArgs {

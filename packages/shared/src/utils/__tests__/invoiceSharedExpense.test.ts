@@ -68,6 +68,15 @@ describe('buildInvoiceSharedExpenseInput', () => {
     expect(input.partner_amount).toBeUndefined()
   })
 
+  it.each(['FULL_OWNER', 'FULL_PARTNER'] as const)('passes a %s split through, leaving the amounts to the server', (method) => {
+    for (const currentUserId of ['owner-1', 'partner-1']) {
+      const input = build({ currentUserId, split: { method } })
+      expect(input.split_method).toBe(method)
+      expect(input.owner_amount).toBeUndefined()
+      expect(input.partner_amount).toBeUndefined()
+    }
+  })
+
   it('maps a custom split onto owner and partner for the owner', () => {
     const input = build({ split: { method: 'CUSTOM', selfAmount: 400, otherAmount: 200 } })
     expect(input.split_method).toBe('CUSTOM')
