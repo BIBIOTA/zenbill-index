@@ -69,3 +69,11 @@ test('updatePersonalExpense omitting wallet_id leaves it out of the body', async
   await client().updatePersonalExpense('tx-1', { amount: 900 })
   assert.deepEqual(calls[0].body, { amount: 900 })
 })
+
+test('createMerchant sends default_wallet_id in the POST body', async () => {
+  await client().createMerchant({ name: '7-11', default_account_id: 'acc-1', default_wallet_id: 'w-1' })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].method, 'POST')
+  assert.equal(calls[0].url, `${BASE}/merchants`)
+  assert.deepEqual(calls[0].body, { name: '7-11', default_account_id: 'acc-1', default_wallet_id: 'w-1' })
+})

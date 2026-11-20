@@ -89,6 +89,7 @@ export interface Merchant {
   default_category_id: string | null
   default_account_id: string | null
   default_country: string | null
+  default_wallet_id?: string | null
 }
 
 /** 行動支付: the payment instrument a transaction went through (Apple Pay, 全支付・PayPay …). */
@@ -170,6 +171,7 @@ export interface CreateMerchantBody {
   default_category_id?: string
   default_account_id?: string
   default_country?: string
+  default_wallet_id?: string
 }
 
 export interface RewardPlan {

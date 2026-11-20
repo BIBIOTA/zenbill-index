@@ -95,7 +95,8 @@ const WALLET_RULE =
   'wallet_id = 行動支付 (the payment instrument), a UUID from list_wallets. Scanning a PayPay code: pick the ' +
   '"〇〇・PayPay" wallet for the app that scanned it, e.g. 「全支付・PayPay」 — the merchant stays the real shop. ' +
   'Tap-to-pay (Apple Pay, Samsung Pay …) or a QR wallet: pick that wallet. Physical card swipe/insert, ' +
-  'bank transfer or cash: leave it out. The account\'s default wallet is NOT applied automatically — you decide.'
+  'bank transfer or cash: leave it out. The account\'s default wallet is NOT applied automatically, and neither ' +
+  'is the merchant\'s default wallet (shown by list_merchants) — consult it, but you decide.'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const dateParam = (what: string) =>
@@ -358,17 +359,18 @@ async function main() {
   server.tool(
     'list_merchants',
     '列出／搜尋商家。List or search the user\'s merchants (case-insensitive name match), with their default ' +
-      'category, account and country. Reuse an existing merchant before creating one.',
+      'category, account, country and 行動支付 (wallet). Reuse an existing merchant before creating one.',
     {
       query: z.string().optional().describe('Substring of the merchant name to match'),
       limit: z.number().int().positive().max(500).optional().describe('Max rows (default 50)'),
     },
     async ({ query, limit }) =>
       reply(async () => {
-        const [merchants, categories, accounts] = await Promise.all([
+        const [merchants, categories, accounts, wallets] = await Promise.all([
           client.listMerchants(),
           optional(() => client.listCategories()),
           optional(() => client.listAccounts()),
+          optional(() => client.listWallets()),
         ])
         const needle = query?.trim().toLowerCase()
         const matched = needle ? merchants.filter((m) => m.name.toLowerCase().includes(needle)) : merchants
@@ -382,6 +384,7 @@ async function main() {
           })
         walk(categories ?? [])
         const accountName = new Map((accounts ?? []).map((a) => [a.id, a.name]))
+        const walletName = new Map((wallets ?? []).map((w) => [w.id, w.name]))
 
         const max = limit ?? 50
         const lines = matched.slice(0, max).map((m) => {
@@ -389,6 +392,7 @@ async function main() {
             m.default_category_id ? `category ${categoryName.get(m.default_category_id) ?? ''} ${m.default_category_id}` : '',
             m.default_account_id ? `account ${accountName.get(m.default_account_id) ?? ''} ${m.default_account_id}` : '',
             m.default_country ? `country ${m.default_country}` : '',
+            m.default_wallet_id ? `wallet ${walletName.get(m.default_wallet_id) ?? ''} ${m.default_wallet_id}` : '',
           ].filter(Boolean)
           return `${m.id}  ${m.name}${parts.length ? `  (default ${parts.join('; ').replace(/  +/g, ' ')})` : ''}`
         })
@@ -421,6 +425,10 @@ async function main() {
       default_category_id: z.string().optional().describe('Category UUID from list_categories'),
       default_account_id: z.string().optional().describe('Account UUID from list_accounts'),
       default_country: z.string().optional().describe('ISO 3166-1 alpha-2, e.g. JP — the shop\'s country'),
+      default_wallet_id: z
+        .string()
+        .optional()
+        .describe('行動支付 UUID from list_wallets — how the user usually pays here; omit for card/cash'),
     },
     async (args) =>
       reply(async () => {
