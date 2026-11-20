@@ -40,6 +40,8 @@ export interface InvoiceSharedExpenseTransaction {
   invoice_id: string
   /** 行動支付；沒選時是 null。只套用在同時建立的個人交易上。 */
   wallet_id: string | null
+  /** 消費國家覆寫（ISO 3166-1 alpha-2）；沒選時是 null。只套用在同時建立的個人交易上。 */
+  country_override: string | null
 }
 
 /**
@@ -90,6 +92,7 @@ export function buildInvoiceSharedExpenseInput(args: InvoiceSharedExpenseArgs): 
     payment_account_id: tx.account_id,
     invoice_id: tx.invoice_id,
     wallet_id: tx.wallet_id,
+    country_override: tx.country_override,
   }
   if (tx.merchant_id) input.merchant_id = tx.merchant_id
   if (tx.category_id) input.personal_category_id = tx.category_id

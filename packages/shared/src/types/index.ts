@@ -234,6 +234,8 @@ export interface Merchant {
   default_account_id: string | null
   /** 商家預設消費國家（ISO 3166-1 alpha-2） */
   default_country?: string | null
+  /** 商家預設行動支付；和 `default_account_id` 成組帶入（見 `resolveWalletDefault`） */
+  default_wallet_id: string | null
   created_at: string
   updated_at: string
 }
@@ -244,6 +246,8 @@ export interface CreateMerchantInput {
   default_account_id?: string
   /** null 清除預設國家 */
   default_country?: string | null
+  /** 商家預設行動支付；null 清除 */
+  default_wallet_id?: string | null
 }
 
 // === Wallet（行動支付）===
@@ -615,6 +619,11 @@ export interface CreateSharedExpenseInput {
    * 沒有 payment_account_id 時後端會忽略。
    */
   wallet_id?: string | null
+  /**
+   * 消費國家（ISO 3166-1 alpha-2），只套用在同時建立的個人交易上，不存進共同支出。
+   * 沒有 payment_account_id 時後端會忽略；不送或 null 代表不覆寫，由後端推算。
+   */
+  country_override?: string | null
 }
 
 /**
@@ -624,7 +633,7 @@ export interface CreateSharedExpenseInput {
  */
 export type UpdateSharedExpenseInput = Omit<
   CreateSharedExpenseInput,
-  'payment_account_id' | 'merchant_id' | 'personal_category_id' | 'invoice_id' | 'wallet_id'
+  'payment_account_id' | 'merchant_id' | 'personal_category_id' | 'invoice_id' | 'wallet_id' | 'country_override'
 >
 
 export interface SharedLedgerSummary {

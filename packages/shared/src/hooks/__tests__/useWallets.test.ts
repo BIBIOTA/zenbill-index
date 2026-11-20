@@ -59,7 +59,7 @@ describe('package exports', () => {
       'useDeleteWallet',
       'walletKeys',
       'walletInvalidators',
-      'resolveWalletOnAccountChange',
+      'resolveWalletDefault',
     ]) {
       expect(shared).toHaveProperty(name)
     }

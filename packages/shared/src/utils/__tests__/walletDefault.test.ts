@@ -1,37 +1,72 @@
 import { describe, expect, it } from 'vitest'
-import { resolveWalletOnAccountChange } from '../walletDefault'
+import { resolveWalletDefault } from '../walletDefault'
 
-const sport = { default_wallet_id: 'samsung-pay' }
-const cathay = { default_wallet_id: 'all-pay' }
-const noDefault = { default_wallet_id: null }
+const sport = { id: 'sport', default_wallet_id: 'samsung-pay' }
+const cathay = { id: 'cathay', default_wallet_id: 'all-pay' }
+const noDefault = { id: 'plain', default_wallet_id: null }
 
-describe('resolveWalletOnAccountChange', () => {
-  it('untouched: switching to an account with a default takes that default', () => {
-    expect(resolveWalletOnAccountChange(cathay, sport, 'all-pay', false)).toBe('samsung-pay')
-  })
+type Args = Parameters<typeof resolveWalletDefault>[0]
 
-  it('untouched: switching from no account (first pick) takes the default', () => {
-    expect(resolveWalletOnAccountChange(null, sport, null, false)).toBe('samsung-pay')
-  })
+describe('resolveWalletDefault', () => {
+  const cases: Array<[string, Args, string | null]> = [
+    [
+      'touched: keeps the current choice over merchant and account defaults',
+      { merchant: { default_account_id: null, default_wallet_id: 'line-pay' }, account: sport, current: 'apple-pay', touched: true },
+      'apple-pay',
+    ],
+    [
+      'touched: keeps an explicit "none" choice',
+      { merchant: { default_account_id: null, default_wallet_id: 'line-pay' }, account: sport, current: null, touched: true },
+      null,
+    ],
+    [
+      'merchant has a wallet but no account → merchant wallet, whatever the account',
+      { merchant: { default_account_id: null, default_wallet_id: 'line-pay' }, account: sport, current: null, touched: false },
+      'line-pay',
+    ],
+    [
+      'merchant has a wallet but no account, and no account picked → merchant wallet',
+      { merchant: { default_account_id: null, default_wallet_id: 'line-pay' }, account: null, current: null, touched: false },
+      'line-pay',
+    ],
+    [
+      "merchant account matches the picked account → merchant wallet",
+      { merchant: { default_account_id: 'sport', default_wallet_id: 'line-pay' }, account: sport, current: 'samsung-pay', touched: false },
+      'line-pay',
+    ],
+    [
+      "merchant account differs from the picked account → account default",
+      { merchant: { default_account_id: 'sport', default_wallet_id: 'line-pay' }, account: cathay, current: 'line-pay', touched: false },
+      'all-pay',
+    ],
+    [
+      'merchant account set but no account picked → account default (none)',
+      { merchant: { default_account_id: 'sport', default_wallet_id: 'line-pay' }, account: undefined, current: 'line-pay', touched: false },
+      null,
+    ],
+    [
+      'merchant wallet is null → account default',
+      { merchant: { default_account_id: 'sport', default_wallet_id: null }, account: sport, current: null, touched: false },
+      'samsung-pay',
+    ],
+    [
+      'no merchant → account default',
+      { merchant: null, account: cathay, current: null, touched: false },
+      'all-pay',
+    ],
+    [
+      'neither merchant nor account has a wallet → null',
+      { merchant: { default_account_id: null, default_wallet_id: null }, account: noDefault, current: 'samsung-pay', touched: false },
+      null,
+    ],
+    [
+      'no merchant and no account → null',
+      { merchant: undefined, account: null, current: 'samsung-pay', touched: false },
+      null,
+    ],
+  ]
 
-  it('untouched: switching to an account without a default clears the wallet', () => {
-    expect(resolveWalletOnAccountChange(sport, noDefault, 'samsung-pay', false)).toBeNull()
-  })
-
-  it('touched: keeps the user choice even when the new account has a default', () => {
-    expect(resolveWalletOnAccountChange(cathay, sport, 'apple-pay', true)).toBe('apple-pay')
-  })
-
-  it('touched: keeps an explicit "none" choice', () => {
-    expect(resolveWalletOnAccountChange(cathay, sport, null, true)).toBeNull()
-  })
-
-  it('untouched: new account is null (account cleared) → no wallet', () => {
-    expect(resolveWalletOnAccountChange(sport, null, 'samsung-pay', false)).toBeNull()
-    expect(resolveWalletOnAccountChange(sport, undefined, 'samsung-pay', false)).toBeNull()
-  })
-
-  it('touched: new account is null → keeps the current choice', () => {
-    expect(resolveWalletOnAccountChange(sport, null, 'apple-pay', true)).toBe('apple-pay')
+  it.each(cases)('%s', (_name, args, expected) => {
+    expect(resolveWalletDefault(args)).toBe(expected)
   })
 })

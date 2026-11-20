@@ -22,6 +22,7 @@ const tx: InvoiceSharedExpenseTransaction = {
   merchant_id: 'merchant-1',
   invoice_id: 'inv-1',
   wallet_id: 'wallet-1',
+  country_override: 'JP',
 }
 
 const base: InvoiceSharedExpenseArgs = {
@@ -48,6 +49,15 @@ describe('buildInvoiceSharedExpenseInput', () => {
   it('sends an explicit wallet_id: null when no wallet is picked', () => {
     const input = build({ transaction: { ...tx, wallet_id: null } })
     expect(input).toHaveProperty('wallet_id', null)
+  })
+
+  it('carries the country override over to the personal transaction', () => {
+    expect(build().country_override).toBe('JP')
+  })
+
+  it('sends an explicit country_override: null when no country is picked', () => {
+    const input = build({ transaction: { ...tx, country_override: null } })
+    expect(input).toHaveProperty('country_override', null)
   })
 
   it('carries the transaction form over: account, amount, date, category, merchant, invoice', () => {
