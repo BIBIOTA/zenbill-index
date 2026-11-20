@@ -242,8 +242,10 @@ export interface Merchant {
 
 export interface CreateMerchantInput {
   name: string
-  default_category_id?: string
-  default_account_id?: string
+  /** 更新時 null 代表清除 */
+  default_category_id?: string | null
+  /** 更新時 null 代表清除 */
+  default_account_id?: string | null
   /** null 清除預設國家 */
   default_country?: string | null
   /** 商家預設行動支付；null 清除 */
